@@ -15,6 +15,3 @@ abuild checksum
 REPODEST="$abs_path" abuild -r
 cd ../..
 
-# output/custom-scripts.apk is a symbolic link to (some complicated path)
-cp output/custom-scripts.apk iso/extracted/
-
