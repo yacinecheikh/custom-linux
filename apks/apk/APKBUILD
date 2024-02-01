@@ -1,0 +1,39 @@
+pkgname=custom-scripts
+pkgver=0.1.0
+pkgrel=0
+pkgdesc="required scripts to setup Custom Linux"
+url="https://example.com"
+arch=noarch
+license="GPL"
+depends=""
+depends_dev=""
+makedepends=""
+install=""
+subpackages=""
+source="$pkgdir/files.tar.gz"
+builddir="$srcdir/$pkgname-$pkgver"
+options="!check"
+
+build() {
+	echo "building the package"
+	return 0
+}
+
+package() {
+	#mkdir -p "$pkgdir"
+	# -D means mkdir -p <dest-prefix>
+	#install -D src/scripts "$pkgdir"/sbin/
+	install -D src/scripts/scripts/setup.sh "$pkgdir"/sbin/setup-custom
+	install -D src/scripts/scripts/install.sh "$pkgdir"/sbin/install-custom
+	files=$(find "$srcdir/scripts/user-configs" -type f)
+	echo $files
+	for f in $files
+	do
+		install -D "$f" "$pkgdir"/root/"$(basename "$f")"
+	done
+	#install -D src/scripts/user-configs "$pkgdir"/root/
+}
+
+sha512sums="
+2adf0edbaefa65d514f28c54a0894bb14a31b0f57a36aa691c09f6a760942baf6d0f4753aadf4991818b47a7caf6adb8e33a65538bafa85f5e66fb5a9e665584  files.tar.gz
+"
