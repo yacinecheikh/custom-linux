@@ -1,0 +1,31 @@
+#!/bin/sh
+
+
+# keybindings
+
+# internal commands
+riverctl map normal Super Q exit
+# this does not work
+riverctl map normal Q exit
+
+
+# spawn keybindings
+riverctl map normal Super+Shift Return spawn foot
+riverctl map normal Super Return spawn foot
+
+riverctl map normal Super T spawn "foot btop"
+riverctl map normal Super X spawn bemenu-run
+riverctl map normal Super W spawn firefox
+riverctl map normal Super F spawn thunar
+
+riverctl spawn rivertile
+riverctl default-layout rivertile
+
+# keyboard layout
+riverctl keyboard-layout -variant bepo fr
+
+# external programs
+swaybg -i /home/user/wallpaper.png &
+
+waybar &
+

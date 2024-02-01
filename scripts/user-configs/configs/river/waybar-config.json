@@ -1,0 +1,10 @@
+{
+	"layer": "top",
+	"modules-left": [],
+	"modules-center": [],
+	"modules-right": ["clock"],
+	"clock": {
+		"format-alt": "{:%a, %d. %b  %H:%M}"
+	}
+}
+

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# TODO: test without sleep 1
+#sleep 1
+riverctl keyboard-layout -variant bepo fr
+swaybg -i /home/user/wallpaper.png &
+# add "exec" if this does not work
+wlgreet --command river
+

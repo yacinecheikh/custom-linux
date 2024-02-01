@@ -1,0 +1,24 @@
+editor:
+  - vim
+browser:
+  - firefox
+wm-presets:
+  # river+swaybg+waybar+foot+bemenu
+  - name: river
+    options:
+      launchbar:
+       # TODO: choose between wofi and bemenu (with wofi as default)
+       - bemenu
+      login:
+        # river can be started from a terminal if the session manager is not wanted
+       - none
+       - greetd-wlgreet
+package-manager:
+  - guix
+
+optional:
+  - btop
+  - openssh
+
+system:
+  user: user
