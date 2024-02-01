@@ -23,8 +23,8 @@ package() {
 	#mkdir -p "$pkgdir"
 	# -D means mkdir -p <dest-prefix>
 	#install -D src/scripts "$pkgdir"/sbin/
-	install -D src/scripts/scripts/setup.sh "$pkgdir"/sbin/setup-custom
-	install -D src/scripts/scripts/install.sh "$pkgdir"/sbin/install-custom
+	install -D src/scripts/bin/setup.sh "$pkgdir"/sbin/setup-custom
+	install -D src/scripts/bin/install.sh "$pkgdir"/sbin/install-custom
 	files=$(find "$srcdir/scripts/user-configs" -type f)
 	echo $files
 	for f in $files
@@ -35,5 +35,5 @@ package() {
 }
 
 sha512sums="
-2adf0edbaefa65d514f28c54a0894bb14a31b0f57a36aa691c09f6a760942baf6d0f4753aadf4991818b47a7caf6adb8e33a65538bafa85f5e66fb5a9e665584  files.tar.gz
+c84dd901379ac189d57e47a5a369184263d90894fd0c212ec51c99e493bddeab13aa2d947bba72f419411d2af5186b573fd88aec0d53f384eb3b0a1e40072d38  files.tar.gz
 "
