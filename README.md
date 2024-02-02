@@ -48,6 +48,8 @@ The `output` folder contains an existing .apk packaged version of the `scripts` 
 
 ## APK
 
+note: this part is currently completely useless, and should be ignored
+
 Building .apk packages requires using an existing Alpine setup.
 To setup my environment on my Alpine VM, i used these commands:
 ```
@@ -85,12 +87,17 @@ The script will:
 Once generated, the ISO can be tested in a KVM virtual machine.
 The files added to the ISO can be found in /media/cdrom.
 
+To prepare the live environment before the setup:
+```sh
+/media/cdrom/custom/bin/custom-prepare.sh
+```
+This script will let you configure the keyboard layout and the internet access, and install required packages for the setup.
+
+
+
+## APK
+
 If the iso contains an apk, it can be installed with:
 ```sh
 apk add /media/cdrom/<apk> --force-non-repository --allow-untrusted
 ```
-
-Alternatively, the /media/cdrom/custom folder contains the same files:
-- a preparation script to setup a basic live environment if needed (WIP)
-- a yaml file to describe the setup to install (WIP)
-- an automatic install script that does everything automatically (WIP)
