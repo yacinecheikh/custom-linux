@@ -1,0 +1,3 @@
+#!/bin/sh
+cp -r /media/cdrom/custom/bin/* /root/
+cp -r /media/cdrom/custom/user-configs /root/config
