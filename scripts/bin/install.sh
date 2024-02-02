@@ -1,5 +1,5 @@
 config() {
-	cat install-choices.yml | yq eval $1 -
+	cat config/install-choices.yml | yq eval $1 -
 }
 
 
