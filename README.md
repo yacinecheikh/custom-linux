@@ -30,7 +30,7 @@ The iso can be built on Ubuntu and installed in a VM.
 
 # What's in the project
 
-[commented]: # (The `apks` directory contains an Alpine apk package build script.
+[comment]: # (The `apks` directory contains an Alpine apk package build script.
 
 The package is built by the `build-apk.sh` script.
 This .apk package contains the scripts and configs that will be used to install and setup the system.
@@ -42,13 +42,13 @@ These scripts are used by `build-iso.sh`.
 
 The `scripts` folder contains the install scripts and a default yaml installation config.
 
-[commented]: # (
+[comment]: # (
 The `output` folder contains an existing .apk packaged version of the `scripts` folder.
 )
 
 # Setup for building
 
-[commented]: # (
+[comment]: # (
 
 ## APK
 
