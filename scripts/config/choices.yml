@@ -1,0 +1,46 @@
+# system parameters
+# this config is made to match my preferences
+# the "default" values in comments are the default values for Alpine Linux
+# (and what the real default config should be once i'm not the only user anymore)
+keyboard:
+  layout: fr # default: us
+  variant: fr-bepo # default: us
+hostname: alpine # default is localhost in alpine linux
+timezone: Europe/Paris # default: UTC
+apk-repos:
+  mirror:
+    # the first option is what the installer will use (just remove every line you don't want to use)
+    - default
+    - fastest
+    - random
+  community: true
+username: user
+password: user
+# remove this entire section if you do not want an ssh server
+ssh:
+  - openssh
+
+# packages
+editor:
+  - vim
+browser:
+  - firefox
+wm-presets:
+  # river+swaybg+waybar+foot+bemenu
+  - name: river
+    options:
+      launchbar:
+       # TODO: choose between wofi and bemenu (with wofi as default)
+       - bemenu
+      login:
+        # river can be started from a terminal if the session manager is not wanted
+       - none
+       - greetd-wlgreet
+package-manager:
+  - guix
+
+optional:
+  - btop
+  - openssh
+services:
+  - openssh

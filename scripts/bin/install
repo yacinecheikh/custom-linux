@@ -1,0 +1,99 @@
+#!/bin/sh
+
+
+# needed in order to read the config
+apk add yq
+
+config() {
+	cat /root/config/choices.yml | yq eval $1 -
+}
+
+
+# keyboard
+layout=$(config '.keyboard.layout')
+variant=$(config '.keyboard.variant')
+setup-keymap $layout $variant
+
+# hostname
+hostname=$(config '.hostname')
+setup-hostname $hostname
+rc-service hostname restart # (après setup-hostname)
+
+# network
+# network is already taken care of by the prepare script
+# but has to be enabled after reboot
+rc-update add networking boot
+
+# timezone
+timezone=$(config '.timezone')
+setup-timezone $timezone
+
+# apk repos
+# apk repos are already configured by the prepare script
+# this will override the default configuration before installing
+mirror=$(config '.apk-repos.mirror.[0]')
+community=$(config '.apk-repos.community')
+case $mirror in
+	default)
+		args="-1";;
+	fastest)
+		args="-f";;
+	random)
+		args="-r";;
+esac
+if [ "$community" = "true" ]
+then
+	args="-c $args"
+fi
+setup-apkrepos $args
+
+
+# main user
+username=$(config '.username')
+password=$(config '.password')
+# -a: admin
+# doing this installs doas automatically
+# -g: groups (using this parameters creates /home/{user} for some reason)
+# -f: full name
+# exact command in setup-alpine: setup-user -a -u -g audio,video,netdev juser
+setup-user -a -g 'audio video netdev' "$username"
+# save home
+# loop over /home/*
+#for i in $ROOT/home/*
+#do
+#	if [ -d "$i" ]
+#	then
+#		lbu add $i
+#	fi
+#done
+lbu add /home/"$username"
+# set the password for user
+echo "$username:$password" | chpasswd
+
+
+# ssh server
+# this can be very useful in VMs, but also very inconvenient since each VM gets a new ip address with DHCP
+ssh=$(config '.ssh.[0]')
+if [ ! "$ssh" = "null" ]
+then
+	setup-sshd "$ssh"
+fi
+
+
+# add missing services for after restart
+# setup-alpine uses either seedrng or urandom
+# (while testing, seedrng existed and urandom did not)
+rc-update add seedrng boot # || rc-update add urandom boot
+# same here, crond exists in the Alpine iso but cron did not appear in my tests
+# to test if a service exists: rc-service --exists $service
+rc-update add crond
+# rc-service add cron
+# setup-alpine only adds acpid (service to handle hardware interrupts like the power button) after checking that this file exists
+# this file always exists in my tests
+# if [ -e /dev/input/event0 ]
+rc-update add acpid
+
+
+# disk install
+yes | setup-disk -m sys /dev/vda
+

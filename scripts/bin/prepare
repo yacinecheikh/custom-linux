@@ -12,6 +12,7 @@ setup-keymap
 # -i: receive interfaces file as stdin
 setup-interfaces -ari < config/system/interfaces
 #rc-service networking restart # -r
+# -c: community, -1: first mirror (the default one)
 setup-apkrepos -c -1
 
 apk add vim nano

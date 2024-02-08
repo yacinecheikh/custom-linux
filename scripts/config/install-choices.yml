@@ -1,6 +1,0 @@
-layout: fr
-layout-variant: fr-bepo
-
-hostname: alpine
-
-ssh: false
