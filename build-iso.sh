@@ -4,7 +4,7 @@ rm -r extracted
 
 ./iso/extract.sh base.iso extracted
 
-cp -r scripts extracted/custom
+cp -r installer-files extracted/custom
 # output/custom-scripts.apk is a symbolic link to (some complicated path)
 #cp output/custom-scripts.apk extracted/
 
