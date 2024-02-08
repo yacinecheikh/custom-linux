@@ -6,7 +6,7 @@ rm -r extracted
 
 cp -r scripts extracted/custom
 # output/custom-scripts.apk is a symbolic link to (some complicated path)
-cp output/custom-scripts.apk extracted/
+#cp output/custom-scripts.apk extracted/
 
 
 ./iso/pack.sh extracted output.iso
