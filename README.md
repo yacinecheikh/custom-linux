@@ -48,7 +48,7 @@ The `output` folder contains an existing .apk packaged version of the `scripts` 
 
 # Setup for building
 
-[comment]: # (
+<!--
 
 ## APK
 
@@ -61,7 +61,7 @@ apk add alpine-sdk
 adduser $USER abuild	# add current user to the abuild groups
 abuild-keygen -a -i -n	# Add a key in ~/.abuild and Install it in /etc/apk/keys, Non-interactively 
 ```
-)
+-->
 
 
 ## ISO
