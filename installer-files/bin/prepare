@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # this script is used to give the user basic capabilities while in the live system
-# (internet access, correct keyboard layout, config edition)
+# (a proper keyboard layout, config edition/fetching tools, available packages,...)
 
 
 
@@ -10,10 +10,11 @@ setup-keymap
 # TODO: does this have any effect in non-interactive mode ? dhcp is already configured in the interfaces
 # -r: restart networking service
 # -i: receive interfaces file as stdin
-setup-interfaces -ari < config/system/interfaces
+#setup-interfaces -ari < config/system/interfaces
 #rc-service networking restart # -r
 # -c: community, -1: first mirror (the default one)
 setup-apkrepos -c -1
 
+# TODO: apk del these packages if the config does not enable them
 apk add vim nano
 

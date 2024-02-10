@@ -1,7 +1,30 @@
 #!/bin/sh
-cp -r /media/cdrom/custom/bin/* /root/
-cp -r /media/cdrom/custom/config /root/
-cp -r /media/cdrom/custom/apks /root
-cp /media/cdrom/custom/user-65ba7738.rsa.pub /etc/apk/keys/
-echo "/media/cdrom/custom/apks" >> /etc/apk/repositories
+files="/media/cdrom/custom"
+apks="$files/apks/x86_64"
+cp -r $files/bin/* /root/
+cp -r $files/config /root/
+#cp -r $files/apks /root
+cp $files/user-65ba7738.rsa.pub /etc/apk/keys/
+echo "$files/apks" >> /etc/apk/repositories
+
+# prepare network access with NetworkManager
+
+# these apk files don't get detected correctly from the apk index, and have to be installed manually (in this order)
+# this band-aid solution (manually installing the .apk files) is the only way i found around this issue
+apk add --force-non-repository $apks/udev-init-scripts-*
+#apk add --force-non-repository $apks/udev-init-scripts-openrc-*
+apk add --force-non-repository $apks/eudev-openrc-*
+apk add --force-non-repository $apks/eudev-*
+
+# udev is needed by NetworkManager
+setup-devd udev
+
+apk add networkmanager
+apk add networkmanager-cli
+
+# same story, the exact error is: "package mentioned in index not found (try 'apk update')
+apk add --force-non-repository $apks/networkmanager-openrc-*
+apk add --force-non-repository $apks/dbus-openrc-*
+
+rc-service networkmanager start
 

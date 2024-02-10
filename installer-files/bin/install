@@ -20,9 +20,10 @@ setup-hostname $hostname
 rc-service hostname restart # (après setup-hostname)
 
 # network
-# network is already taken care of by the prepare script
+# network is already taken care of by the init script
 # but has to be enabled after reboot
-rc-update add networking boot
+rc-update networkmanager start
+#rc-update add networking boot
 
 # timezone
 timezone=$(config '.timezone')
