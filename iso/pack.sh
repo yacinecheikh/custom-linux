@@ -11,5 +11,10 @@ dst="$dst_dir_abs/$dst_file"
 
 # package as an iso
 cd "$src"
-mkisofs -o "$dst" -b boot/syslinux/isolinux.bin -c boot/syslinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e boot/grub/efi.img -J -R -V "Custom Linux" .
+#mkisofs -o "$dst" -b boot/syslinux/isolinux.bin -c boot/syslinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -e boot/grub/efi.img -J -R -V "Custom Linux" .
+boot="boot/syslinux/isolinux.bin"
+boot_catalog="boot/syslinux/boot.cat"
+efi="boot/grub/efi.img"
+args="-no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot"
+mkisofs -o "$dst" -b $boot -c $boot_catalog $args -e $efi -J -R -V "Custom Linux" . > /dev/null 2>&1
 
