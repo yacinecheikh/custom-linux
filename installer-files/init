@@ -1,3 +1,7 @@
 #!/bin/sh
 cp -r /media/cdrom/custom/bin/* /root/
 cp -r /media/cdrom/custom/config /root/
+cp -r /media/cdrom/custom/apks /root
+cp /media/cdrom/custom/user-65ba7738.rsa.pub /etc/apk/keys/
+echo "/media/cdrom/custom/apks" >> /etc/apk/repositories
+

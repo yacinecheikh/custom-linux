@@ -4,7 +4,12 @@ src=$1
 dest=$2
 
 # clean temp files
-rm -r "$dest"
+if [ -d "$dest" ]
+then
+	echo "cleaning previously extracted files"
+	rm -r "$dest"
+fi
+
 
 
 ##### connect the iso and mount it
