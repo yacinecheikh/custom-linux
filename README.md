@@ -64,6 +64,19 @@ abuild-keygen -a -i -n	# Add a key in ~/.abuild and Install it in /etc/apk/keys,
 ```
 -->
 
+## Package cache
+
+The Custom iso relies on packages that are not included with the standard Alpine image.
+
+These required packages can be downloaded with the `fetch-packages.sh` script.
+Some packages require having enabled the Alpine community repository first.
+
+The main dependencies are `yq`, `networkmanager`, `networkmanager-cli` and `eudev`.
+The reason I am publishing build instructions instead of a pre-built iso is that I am not sure if I am legally allowed to distribute these packages as part of an ISO.
+
+After fetching the packages, they have to be indexed and signed with the `build-apkindex.sh` script.
+
+<!--TODO: write how to setup abuild-->
 
 ## ISO
 
