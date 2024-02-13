@@ -17,4 +17,10 @@ boot_catalog="boot/syslinux/boot.cat"
 efi="boot/grub/efi.img"
 args="-no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot"
 mkisofs -o "$dst" -b $boot -c $boot_catalog $args -e $efi -J -R -V "Custom Linux" . > /dev/null 2>&1
+result=$?
+
+if [ "$result" = 0 ]
+then
+	echo "successfully generated $dst"
+fi
 
