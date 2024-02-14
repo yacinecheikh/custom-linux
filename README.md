@@ -47,12 +47,6 @@ The .apk package is not required for a functional setup, since the same files ar
 -->
 
 <!--
-The `iso` folder contains scripts to patch the Alpine Linux iso file.
-These scripts are used by `build-iso.sh`.
-
-The `scripts` folder contains the install scripts and a default yaml installation config.
--->
-<!--
 The `output` folder contains an existing .apk packaged version of the `scripts` folder.
 -->
 
@@ -66,6 +60,8 @@ Ths step is needed because the `local-apks` packages have to be indexed and sign
 
 This requires having installed the Alpine SDK and generating a key to sign the packages
 
+You will also need to enable the Alpine community repository for some packages.
+
 ### Alpine SDK
 ```sh
 apk add alpine-sdk
@@ -74,6 +70,12 @@ abuild-keygen -a -i
 ```
 
 You will need to put your own public key (in ~/.abuild/ and in /etc/apk/keys) in `installer-files/keys` in order for them to be recognized as valid Custom keys.
+
+
+### Community repository
+You can reset the Alpine mirrors and enable community repositories by running `setup-apkrepos`.
+
+The use of community packages is the reason why I am releasing build instructions instead of a pre-built image, as I do not know if I am allowed to distribute these packages myself.
 
 
 ## Udisks2
@@ -129,30 +131,6 @@ abuild-keygen -a -i -n	# Add a key in ~/.abuild and Install it in /etc/apk/keys,
 ```
 -->
 
-## Package cache
-
-The Custom iso relies on packages that are not included with the standard Alpine image.
-
-Some packages require having enabled the Alpine community repository first.
-
-The main dependencies are `yq`, `networkmanager`, `networkmanager-cli` and `eudev`.
-The reason I am publishing build instructions instead of a pre-built iso is that I am not sure if I am legally allowed to distribute these packages as part of an ISO.
-
-
-<!--TODO: write how to setup abuild-->
-
-## ISO
-
-To be able to mount the iso without being root, I used `udisksctl`, which is already installed by default on Ubuntu.
-I also used the `mkisofs` command to build the iso.
-
-
-The `build-iso.sh` script assumes the presence of an Alpine iso named "base.iso" in the root of the project.
-
-The `base.iso` is not in this git repository, but it can be downloaded from the [official alpine downloads](https://www.alpinelinux.org/downloads/).
-
-
-
 
 # How to build
 
@@ -160,6 +138,7 @@ Once the requirements are ready, run:
 ```sh
 ./build.sh alpine.iso custom.iso
 ```
+The `alpine.iso` image is not in this git repository, but it can be downloaded from the [official alpine downloads](https://www.alpinelinux.org/downloads/). Any Alpine image should work, but I test with the virt and standard images.
 
 The script will:
 * fetch packages from the APK repositories
