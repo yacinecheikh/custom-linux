@@ -25,10 +25,18 @@ I would rather have a one-size-fits-all installer to quickly spawn new lightweig
 
 Not ready for use.
 
-The iso can be built on Ubuntu and installed in a VM.
+The iso can be built from Alpine Linux and installed in a VM.
 
 
 # What's in the project
+
+The `installer-files` folder contains scripts and a yaml installation config file.
+These files are bundled in the Alpine image.
+
+The `local-apks` directory contains offline packages downloaded with apk from Alpine Linux. These packages are required to bootstrap the installer.
+
+The `build.sh` script will patch the Alpine image by inserting the installer files and local packages.
+
 
 <!--
 The `apks` directory contains an Alpine apk package build script.
@@ -38,16 +46,73 @@ This .apk package contains the scripts and configs that will be used to install 
 The .apk package is not required for a functional setup, since the same files are bundled as a simple directory in the live iso.
 -->
 
+<!--
 The `iso` folder contains scripts to patch the Alpine Linux iso file.
 These scripts are used by `build-iso.sh`.
 
 The `scripts` folder contains the install scripts and a default yaml installation config.
-
+-->
 <!--
 The `output` folder contains an existing .apk packaged version of the `scripts` folder.
 -->
 
 # Setup for building
+
+You will need an Alpine Linux install to build the ISO. If you do not hav one already, you can install it in a virtual machine with virt-manager.
+
+## Local package repository
+
+Ths step is needed because the `local-apks` packages have to be indexed and signed for the apk command to use them.
+
+This requires having installed the Alpine SDK and generating a key to sign the packages
+
+### Alpine SDK
+```sh
+apk add alpine-sdk
+adduser $USER abuild
+abuild-keygen -a -i
+```
+
+You will need to put your own public key (in ~/.abuild/ and in /etc/apk/keys) in `installer-files/keys` in order for them to be recognized as valid Custom keys.
+
+
+## Udisks2
+
+The Udisks2 service is what allows users to mount removable devices without being root.
+This features can be used in script with the `udisksctl` command.
+Polkit is a service that manages controlled privilege escalation, and is used by Udisks2 to check if the user is allowed to manage devices.
+
+Both of these services are builtin on Ubuntu, but have to be setup manually on Alpine Linux.
+
+Note: if you use a shared filesystem with an Alpine Linux, you can also go through the `build.sh` script and split the tasks between your main OS, which should have udisks enabled, and Alpine.
+
+To setup Udisks2:
+```sh
+apk add udisks2 polkit
+rc-service polkit start
+```
+
+After restarting your shell session, udisks will allow you to mount devices with udisksctl, but will ask you to authenticate every time.
+
+To skip this authentication step, you can add this polkit JS config to `/etc/polkit-1/rules/d/udisks.rules`:
+
+```javascript
+polkit.addRule(function(action, subject) {
+    if (action.id.startsWith("org.freedesktop.udisks2."
+     && subject.isInGroup("plugdev")) {
+        return polkit.Result.YES;
+    }
+});
+```
+
+This will allow any user in the `plugdev` group to use udisksctl without authentication.
+
+
+## ISO
+
+The `build.sh` script uses the mkisofs command.
+To add this command:
+`apk add xorriso`
 
 <!--
 
@@ -68,13 +133,11 @@ abuild-keygen -a -i -n	# Add a key in ~/.abuild and Install it in /etc/apk/keys,
 
 The Custom iso relies on packages that are not included with the standard Alpine image.
 
-These required packages can be downloaded with the `fetch-packages.sh` script.
 Some packages require having enabled the Alpine community repository first.
 
 The main dependencies are `yq`, `networkmanager`, `networkmanager-cli` and `eudev`.
 The reason I am publishing build instructions instead of a pre-built iso is that I am not sure if I am legally allowed to distribute these packages as part of an ISO.
 
-After fetching the packages, they have to be indexed and signed with the `build-apkindex.sh` script.
 
 <!--TODO: write how to setup abuild-->
 
@@ -93,12 +156,16 @@ The `base.iso` is not in this git repository, but it can be downloaded from the 
 
 # How to build
 
-Once the requirements are ready, run `build-iso.sh`.
+Once the requirements are ready, run:
+```sh
+./build.sh alpine.iso custom.iso
+```
 
 The script will:
-* extract the contents of the `base.iso`
+* fetch packages from the APK repositories
+* extract the contents of `alpine.iso`
 * insert Custom files
-* package everything as a new bootable ISO file under the name `output.iso`
+* package the files as a new bootable `custom.iso` image
 
 # Custom installation
 

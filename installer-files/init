@@ -4,7 +4,7 @@ apks="$files/apks/x86_64"
 cp -r $files/bin/* /root/
 cp -r $files/config /root/
 #cp -r $files/apks /root
-cp $files/user-65ba7738.rsa.pub /etc/apk/keys/
+cp $files/keys/user-*.rsa.pub /etc/apk/keys/
 echo "$files/apks" >> /etc/apk/repositories
 
 # prepare network access with NetworkManager
