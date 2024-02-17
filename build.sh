@@ -92,8 +92,12 @@ boot_catalog="boot/syslinux/boot.cat"
 efi="boot/grub/efi.img"
 args="-no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot"
 name="Custom Linux"
-cmd=mkisofs -o "$absolute_dest" -b $boot -c $boot_catalog $args -e $efi -J -R -V $name . > /dev/null 2>&1
-output=$($cmd)
+cmd="mkisofs -o "$absolute_dest" -b $boot -c $boot_catalog $args -e $efi -J -R -V \"$name\" . 2>&1" # > /dev/null 2>&1"
+#echo "running: $cmd"
+echo "creating $dest_iso"
+# don't ask me what eval does, i just know it doesn't work without it
+output=$(eval "$cmd")
+
 result=$?
 
 if [ "$result" = 0 ]
@@ -101,7 +105,7 @@ then
 	echo "finished building $dest_iso"
 else
 	echo "ERROR: failed to generate $dest_iso"
-	echo "output from command \"$cmd\":\n\n$output"
+	echo -e "output from command \"$cmd\":\n\n$output"
 fi
 
 
