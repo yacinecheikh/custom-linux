@@ -8,7 +8,6 @@ config() {
 	cat /root/config/choices.yml | yq eval $1 -
 }
 
-
 # keyboard
 layout=$(config '.keyboard.layout')
 variant=$(config '.keyboard.variant')
@@ -22,8 +21,7 @@ rc-service hostname restart # (après setup-hostname)
 # network
 # network is already taken care of by the init script
 # but has to be enabled after reboot
-rc-update networkmanager start
-#rc-update add networking boot
+rc-update add networkmanager boot
 
 # timezone
 timezone=$(config '.timezone')
@@ -52,12 +50,10 @@ setup-apkrepos $args
 # main user
 username=$(config '.username')
 password=$(config '.password')
-# -a: admin
-# doing this installs doas automatically
-# -g: groups (using this parameters creates /home/{user} for some reason)
-# -f: full name
-# exact command in setup-alpine: setup-user -a -u -g audio,video,netdev juser
-setup-user -a -g 'audio video netdev' "$username"
+# -a: admin (using this installs doas automatically)
+# -g: groups
+# the 'plugdev' group is added by NetworkManager, for rootless network management
+setup-user -a -g 'audio video netdev plugdev' "$username"
 # save home
 # loop over /home/*
 #for i in $ROOT/home/*
@@ -70,6 +66,10 @@ setup-user -a -g 'audio video netdev' "$username"
 lbu add /home/"$username"
 # set the password for user
 echo "$username:$password" | chpasswd
+# copy installer files to the home of the main user
+cp -r /root/config /home/"$username"
+cp /root/setup /home/"$username"
+lbu add /home/"$username"
 
 
 # ssh server
