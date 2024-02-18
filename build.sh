@@ -22,6 +22,12 @@ fi
 
 
 # fetch packages from alpine repos
+if [ -d "local-apks" ]
+then
+	rm -r local-apks
+	echo "cleaned package cache"
+fi
+mkdir -p local-apks/x86_64
 cd local-apks/x86_64/
 apk fetch --recursive yq networkmanager networkmanager-cli eudev networkmanager-openrc eudev-openrc udev-init-scripts-openrc dbus-openrc
 # index local packages
