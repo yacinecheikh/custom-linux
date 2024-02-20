@@ -29,7 +29,7 @@ then
 fi
 mkdir -p local-apks/x86_64
 cd local-apks/x86_64/
-apk fetch --recursive yq networkmanager networkmanager-cli eudev networkmanager-openrc eudev-openrc udev-init-scripts-openrc dbus-openrc
+apk fetch --recursive yq vim nano networkmanager networkmanager-cli eudev networkmanager-openrc eudev-openrc udev-init-scripts-openrc dbus-openrc
 # index local packages
 apk index -vU -o APKINDEX.tar.gz *.apk
 # sign the index with the key generated with default settings by abuild-keygen
