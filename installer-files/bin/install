@@ -5,33 +5,49 @@
 apk add yq
 
 config() {
-	cat /root/config/choices.yml | yq eval $1 -
+	cat /root/config/choices.yml | yq eval .$1 -
+}
+
+enabled() {
+        if [ "$(config "$1")" = true ]
+        then
+                return 0
+        else
+                return 1
+        fi
+}
+
+persist() {
+	# saves filesystem changes to persist after install and reboot
+	lbu add $1
 }
 
 # keyboard
-layout=$(config '.keyboard.layout')
-variant=$(config '.keyboard.variant')
+layout=$(config 'system.keyboard.layout')
+variant=$(config 'system.keyboard.variant')
 setup-keymap $layout $variant
 
 # hostname
-hostname=$(config '.hostname')
+hostname=$(config 'system.hostname')
 setup-hostname $hostname
-rc-service hostname restart # (après setup-hostname)
+rc-service hostname restart
 
 # network
 # network is already taken care of by the init script
 # but has to be enabled after reboot
-rc-update add networkmanager boot
+if enabled 'system.services.networkmanager'
+then
+	rc-update add networkmanager boot
+fi
 
 # timezone
-timezone=$(config '.timezone')
+timezone=$(config 'system.timezone')
 setup-timezone $timezone
 
 # apk repos
 # apk repos are already configured by the prepare script
 # this will override the default configuration before installing
-mirror=$(config '.apk-repos.mirror.[0]')
-community=$(config '.apk-repos.community')
+mirror=$(config 'system.repository.apk.mirror')
 case $mirror in
 	default)
 		args="-1";;
@@ -40,59 +56,48 @@ case $mirror in
 	random)
 		args="-r";;
 esac
-if [ "$community" = "true" ]
+if enabled 'system.repository.apk.community'
 then
 	args="-c $args"
 fi
 setup-apkrepos $args
+if enabled 'system.repository.apk.edge-testing'
+then
+	mirror_url=$(cat /etc/apk/repositories | tail -n 1 | cut -d "/" -f 1-4)
+	edge_testing="$mirror_url/edge/testing"
+fi
 
 
 # main user
-username=$(config '.username')
-password=$(config '.password')
+username=$(config 'system.user.username')
+password=$(config 'system.user.password')
 # -a: admin (using this installs doas automatically)
 # -g: groups
+setup-user -a -g 'audio video netdev' "$username"
+# TODO: adduser $username plugdev (if enabled 'system.services.networkmanager')
 # the 'plugdev' group is added by NetworkManager, for rootless network management
-setup-user -a -g 'audio video netdev plugdev' "$username"
-# save home
-# loop over /home/*
-#for i in $ROOT/home/*
-#do
-#	if [ -d "$i" ]
-#	then
-#		lbu add $i
-#	fi
-#done
-lbu add /home/"$username"
-# set the password for user
+
+# set the password for the user
 echo "$username:$password" | chpasswd
 # copy installer files to the home of the main user
 cp -r /root/config /home/"$username"
 cp /root/setup /home/"$username"
-lbu add /home/"$username"
+persist /home/$username
 
 
-# ssh server
-# this can be very useful in VMs, but also very inconvenient since each VM gets a new ip address with DHCP
-ssh=$(config '.ssh.[0]')
-if [ ! "$ssh" = "null" ]
+if enabled "system.services.seedrng"
 then
-	setup-sshd "$ssh"
+	rc-update add seedrng boot
 fi
 
+for service in crond acpid
+do
+	if enabled "system.services.$service"
+	then
+		rc-update add $service
+	fi
+done
 
-# add missing services for after restart
-# setup-alpine uses either seedrng or urandom
-# (while testing, seedrng existed and urandom did not)
-rc-update add seedrng boot # || rc-update add urandom boot
-# same here, crond exists in the Alpine iso but cron did not appear in my tests
-# to test if a service exists: rc-service --exists $service
-rc-update add crond
-# rc-service add cron
-# setup-alpine only adds acpid (service to handle hardware interrupts like the power button) after checking that this file exists
-# this file always exists in my tests
-# if [ -e /dev/input/event0 ]
-rc-update add acpid
 
 
 # disk install
