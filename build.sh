@@ -21,12 +21,19 @@ then
 fi
 
 
-# fetch packages from alpine repos
+# erase previous files
+# (to keep updated version of packages and fix permission issues after using custom.iso in a libvirt VM)
 if [ -d "local-apks" ]
 then
 	rm -r local-apks
 	echo "cleaned package cache"
 fi
+if [ -e "$dest_iso" ]
+then
+	rm -f "$dest_iso"
+fi
+
+# fetch packages from alpine repos
 mkdir -p local-apks/x86_64
 cd local-apks/x86_64/
 apk fetch --recursive yq vim nano networkmanager networkmanager-cli eudev networkmanager-openrc eudev-openrc udev-init-scripts-openrc dbus-openrc
