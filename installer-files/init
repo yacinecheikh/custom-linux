@@ -1,4 +1,7 @@
 #!/bin/sh
+
+# prepare the installer files
+
 files="/media/cdrom/custom"
 apks="$files/apks/x86_64"
 cp -r $files/bin/* /root/
@@ -6,6 +9,20 @@ cp -r $files/config /root/
 #cp -r $files/apks /root
 cp $files/keys/user-*.rsa.pub /etc/apk/keys/
 echo "$files/apks" >> /etc/apk/repositories
+
+
+# dependencies for the install script
+apk add yq
+
+
+#=================================================================
+# prepare a useable live environment to configure the installation
+#=================================================================
+
+
+# packages useful for the user
+apk add nano vim
+
 
 # prepare network access with NetworkManager
 

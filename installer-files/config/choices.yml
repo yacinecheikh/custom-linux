@@ -57,6 +57,8 @@ graphics:
       login: greetd-wlgreet
       # terminal: foot | none
       terminal: foot
+      # explorer: thunar | none
+      explorer: thunar
 
 services:
   # ssh: openssh | none
