@@ -30,10 +30,9 @@ verbose=$(config 'verbose')
 #===============
 
 
-if [ $(config 'graphics.preset') = "river" ] && ! enabled 'system.repository.apk.test'
+if [ $(config 'graphics.preset') = "river" ] && ! enabled 'system.repository.apk.edge-testing'
 then
-	echo "error: riverwm requires enabling the apk test repository (system.repository.apk.test in choices.yml)"
-	exit 1
+	error system.repository.apk.edge-testing "riverwm requires enabling the apk edge/testing repository"
 fi
 
 
@@ -154,6 +153,7 @@ error() {
 	src="$1"
 	msg="$2"
 	echo "error: $msg ($src)"
+	exit 1
 }
 
 error_unknown() {
