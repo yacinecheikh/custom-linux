@@ -1,8 +1,15 @@
 #!/bin/sh
 
 
-config_path="./config"
+conf_src="/root/config"
 
+
+error() {
+	src="$1"
+	msg="$2"
+	echo "error: $msg ($src)"
+	exit 1
+}
 
 config() {
 	cat /root/config/choices.yml | yq eval .$1 -
@@ -96,15 +103,21 @@ fullname=$(config 'system.user.fullname')
 # -a: admin (using this installs doas automatically)
 # -g: groups
 setup-user -a -g 'audio video netdev' -f "$fullname" "$username"
-# TODO: adduser $username plugdev (if enabled 'system.services.networkmanager')
-# the 'plugdev' group is added by NetworkManager, for rootless network management
+# networkmanager uses the plugdev group for rootless interface management
+if enabled 'system.services.networkmanager'
+then
+	adduser "$username" plugdev
+fi
 
 # set the password for the user
 echo "$username:$password" | chpasswd
-# copy installer files to the home of the main user
-cp -r /root/config /home/"$username"
-cp /root/setup /home/"$username"
 persist /home/$username
+# TODO: remove after testing
+# copy installer files to the home of the main user
+# not needed anymore, since the install step does everything the setup step did
+#cp -r /root/config /home/"$username"
+#cp /root/setup /home/"$username"
+#persist /home/$username
 
 
 # boot system services
@@ -149,12 +162,6 @@ pkgdel() {
 	fi
 }
 
-error() {
-	src="$1"
-	msg="$2"
-	echo "error: $msg ($src)"
-	exit 1
-}
 
 error_unknown() {
 	setting="$1"
@@ -178,56 +185,42 @@ do
 	fi
 done
 
-# these packages were added in the live environment
-for tmp_pkg in vim nano yq
-do
-	if ! enabled 'packages.'$tmp_pkg
-	then
-		apk del $tmp_pkg
-	fi
-done
 
 # services
-for service in polkit networkmanager udisks
+for service in polkit
 do
 	if enabled 'services.'$service
 	then
 		echo "installing service $service"
-		apk add $service
+		pkgadd $service
 		rc-update add $service
 		rc-service $service start
 	fi
 done
 
+# is udisks2 a service ? on ubuntu, yes, on alpine, no
+if enabled 'services.udisks2'
+then
+	pkgadd udisks2
+fi
+
+
 if enabled 'services.polkit'
 then
 	# TODO: test
 	#mkdir -p /etc/polkit/rules.d
-	cp "$config_path"/etc/polkit-1/rules.d/* /etc/polkit-1/rules.d/
+	cp "$conf_src"/etc/polkit-1/rules.d/* /etc/polkit-1/rules.d/
 fi
-
-# these services were added in the live environment
-for tmp_service in networkmanager
-do
-	if ! enabled 'services.'$service
-	then
-		rc-update del $service
-		rc-service $service stop
-		apk del $service
-	fi
-done
 
 
 ssh=$(config 'services.ssh')
 case $ssh in
 	openssh)
-		setup-sshd openssh
-		;;
+		setup-sshd openssh;;
 	none)
-		echo "skipping ssh server"
-		;;
+		echo "skipping ssh server";;
 	*)
-		error_unknown "services.ssh"
+		error_unknown "services.ssh";;
 esac
 
 
@@ -240,18 +233,21 @@ case $preset in
 		pkgadd river
 		rc-service seatd start
 		rc-update add seatd
-		adduser $(config '.system.user') seat
+		adduser $(config 'system.user.username') seat
 		pkgadd xwayland
 
 		# udev is already setup by the init script
 		#setup-devd udev
 
 		# configure river
-		path="/home/$username/.config/river"
-		mkdir -p "$path"
+		home="/home/$username"
+		confdir="$home/.config"
 
-		cp "$config_path"/river/river-init "$path/init"
-		chmod +x "$path/init"
+		path="/home/$username/.config/river"
+		mkdir -p "$confdir/river"
+
+		cp "$conf_src"/configs/river/river-init "$confdir/river/init"
+		chmod +x "$confdir/river/init"
 
 
 
@@ -266,14 +262,14 @@ case $preset in
 			none)
 				;;
 			*)
-				error_unknown graphics.options.river.launcher
-		apk add bemenu
+				error_unknown graphics.options.river.launcher;;
+		esac
 
 		bar=$(config 'graphics.options.river.bar')
 		case $bar in
 			waybar)
-				mkdir "/home/$username/.config/waybar"
-				cp "$config_path"/river/waybar-config.json "$path"/.config/waybar/config
+				mkdir "$confdir/waybar"
+				cp "$conf_src"/configs/river/waybar-config.json "$confdir/waybar/config"
 				pkgadd waybar
 				;;
 			none)
@@ -282,7 +278,7 @@ case $preset in
 				error_unknown graphics.options.river.bar
 		esac
 
-		cp configs/river/xdg-profile.sh /etc/profile.d/xdg-runtime-dir.sh
+		cp "$conf_src"/configs/river/xdg-profile.sh /etc/profile.d/xdg-runtime-dir.sh
 		# TODO: chmod +x ?
 
 		pkgadd font-dejavu
@@ -306,7 +302,9 @@ case $preset in
 				error_unknown graphics.options.river.terminal
 		esac
 
-		pkgadd dbus dbus-x11 # needed for waybar
+		# needed for waybar
+		pkgadd dbus
+		pkgadd dbus-x11
 
 		explorer=$(config 'graphics.options.river.explorer')
 		case $explorer in
@@ -324,8 +322,8 @@ case $preset in
 			greetd-wlgreet)
 				echo "setting up greetd session manager"
 				pkgadd greetd-wlgreet
-				cp "$config_path"/river/greetd-config.toml /etc/greetd/config.toml
-				cp configs/river/river-wlgreet-config /etc/greetd/river-wlgreet-config
+				cp "$conf_src"/configs/river/greetd-config.toml /etc/greetd/config.toml
+				cp "$conf_src"/configs/river/river-wlgreet-config /etc/greetd/river-wlgreet-config
 
 				adduser greetd seat
 				# TODO: carefully test before doing this
@@ -345,6 +343,24 @@ case $preset in
 		echo "not implemented"
 		;;
 esac
+
+
+# remove live packages and services which have been disabled
+
+if ! enabled 'system.services.networkmanager'
+then
+	rc-update del networkmanager boot
+	rc-service networkmanager stop
+	apk del networkmanager
+fi
+
+for tmp_pkg in vim nano yq
+do
+	if ! enabled 'packages.'$tmp_pkg
+	then
+		apk del $tmp_pkg
+	fi
+done
 
 # disk install
 yes | setup-disk -m sys /dev/vda

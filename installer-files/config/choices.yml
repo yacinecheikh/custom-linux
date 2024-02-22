@@ -20,7 +20,7 @@ system:
     apk:
       # mirror: default | fastest | random
       mirror: default
-      communtiy: true
+      community: true
       # edge/testing repository (needed for riverwm)
       edge-testing: false
   user:
@@ -64,7 +64,7 @@ services:
   # ssh: openssh | none
   ssh: openssh
   polkit: true
-  udisks: true
+  udisks2: true
 
 packages:
   vim: true
