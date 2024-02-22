@@ -150,10 +150,20 @@ The script will:
 
 After booting the Custom iso, execute these commands to install the OS:
 ```sh
+# configure the keyboard layout (optional)
+setup-keymap
+# OR (non-interactive)
+setup-keymap <layout> <variant>
+
+# configure the Alpine repositories (optional)
+setup-apkrepos
+# OR (non-interactive):
+setup-apkrepos -1 -c # -1 is the first repository mirror, -c enables the community repository
+
 # initialize the install scripts
+# this will install vim, nano and NetworkManager in the live environment
 /media/cdrom/custom/init
-# prepare the environment for the user (keyboard layout, internet access and text editor)
-./prepare
+
 # install the OS according to the config in ./config/choices.yml
 ./install
 ```
