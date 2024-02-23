@@ -4,7 +4,8 @@
 
 files="/media/cdrom/custom"
 apks="$files/apks/x86_64"
-cp -r $files/bin/* /root/
+cp -r $files/install /root/
+cp -r $files/choices.yml /root/
 cp -r $files/config /root/
 #cp -r $files/apks /root
 cp $files/keys/user-*.rsa.pub /etc/apk/keys/
