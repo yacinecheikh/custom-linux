@@ -9,23 +9,23 @@ The project is used to patch the latest Alpine images and generate a Custom live
 Building the iso this way allows Custom to work on every architecture that is supported by Alpine Linux.
 
 
-The goals i try to follow while adding features to this project are:
-- VM-first: the setup is entirely automatic and all the wanted packages (like zsh, docker,...) can be checked in the installer
-	* this is just a convenience feature for quick, minimal and reproducible setups, and does not prevent the user from installing packages after install
-- "cross-distro": with the cross-platform Guix package manager, the installation scripts *should* be easy to port to an other distro if needed (very WIP, might be canceled)
+The goals that i try to follow while adding features to this project are:
+- VM-first: the setup is entirely automatic and completely optional
+	* the critical services like crond, acpid or networkmanager are optional, so that the config and the install script can be used as an educational example of what makes up a modern Linux distro
+	* the user packages (zsh, libreoffice, firefox,...) are also optional, in order to allow extremely lightweight virtual machines
+- "cross-distro": with the cross-platform Guix package manager, the Custom distro *should* be easy to port to an other distro (this part is postponed until the graphics work correctly, and might be canceled due to the disk space required by Guix)
 - minimalist: currently, my wayland/riverwm setup takes about 300MB of ram and 700MB of disk space
 - user-friendly: The setup should be useable by people who don't use Arch or rice their setup too hard
 
 
-Most of my motivation comes from using virtual machines and having to choose between large ubuntu images and maintaining custom Alpine VMs.
-I would rather have a one-size-fits-all installer to quickly spawn new lightweight VMs.
+Most of my motivation comes from using virtual machines and having to choose between large ubuntu install sizes and light but unusable Alpine VMs.
 
 
 # Status
 
-Not ready for use.
+Custom Linux can be installed in a VM, but some parts do not work as intended.
 
-The iso can be built from Alpine Linux and installed in a VM.
+The iso can be built from Alpine Linux or from a Custom Linux install (since both distros are low level, there is a setup required before building the Custom image).
 
 
 # What's in the project
@@ -73,9 +73,8 @@ You will need to put your own public key (in ~/.abuild/ and in /etc/apk/keys) in
 
 
 ### Community repository
-You can reset the Alpine mirrors and enable community repositories by running `setup-apkrepos`.
+You can reconfigure the Alpine mirrors and enable community repositories by running `setup-apkrepos`. This will modify the `/etc/apk/repositories` mirror list.
 
-The use of community packages is the reason why I am releasing build instructions instead of a pre-built image, as I do not know if I am allowed to distribute these packages myself.
 
 
 ## Udisks2
@@ -107,7 +106,7 @@ polkit.addRule(function(action, subject) {
 });
 ```
 
-This will allow any user in the `plugdev` group to use udisksctl without authentication.
+This will allow any user in the `plugdev` group to use udisksctl without authentication. The `plugdev` group is used by NetworkManager to allow rootless users to manage network connections.
 
 
 ## ISO
@@ -142,9 +141,9 @@ The `alpine.iso` image is not in this git repository, but it can be downloaded f
 
 The script will:
 * fetch packages from the APK repositories
-* extract the contents of `alpine.iso`
+* extract the contents of the alpine iso image
 * insert Custom files
-* package the files as a new bootable `custom.iso` image
+* package the files as a new bootable iso image
 
 # Custom installation
 
@@ -164,7 +163,7 @@ setup-apkrepos -1 -c # -1 is the first repository mirror, -c enables the communi
 # this will install vim, nano and NetworkManager in the live environment
 /media/cdrom/custom/init
 
-# install the OS according to the config in ./config/choices.yml
+# install the OS according to the config in ./choices.yml
 ./install
 ```
 
