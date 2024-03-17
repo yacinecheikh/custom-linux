@@ -12,7 +12,7 @@ error() {
 }
 
 config() {
-	cat /root/config/choices.yml | yq eval .$1 -
+	cat /root/choices.yml | yq eval .$1 -
 }
 
 enabled() {
@@ -232,7 +232,7 @@ case $preset in
 
 		pkgadd river
 		rc-service seatd start
-		rc-update add seatd
+		rc-update add seatd boot
 		adduser $(config 'system.user.username') seat
 		pkgadd xwayland
 
@@ -324,6 +324,9 @@ case $preset in
 				pkgadd greetd-wlgreet
 				cp "$conf_src"/configs/river/greetd-config.toml /etc/greetd/config.toml
 				cp "$conf_src"/configs/river/river-wlgreet-config /etc/greetd/river-wlgreet-config
+				chmod +x /etc/greetd/river-wlgreet-config
+				#chmod u+x /etc/greetd/river-wlgreet-config
+				#chown greetd /etc/greetd/river-wlgreet-config
 
 				adduser greetd seat
 				# TODO: carefully test before doing this
