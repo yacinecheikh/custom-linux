@@ -42,6 +42,16 @@ then
 	error system.repository.apk.edge-testing "riverwm requires enabling the apk edge/testing repository"
 fi
 
+if [ $('config.shell') = "zsh" ] && ! enabled 'packages.zsh'
+then
+	error config.shell "using zsh as default shell requires installing zsh"
+fi
+
+if enabled 'packages.alpine-zsh-config' && ! enabled 'packages.zsh'
+then
+	echo "warning: installing zsh default config but not zsh"
+fi
+
 
 #===============
 # alpine install
@@ -176,7 +186,7 @@ passwd -l root
 apk update
 
 # packages
-for pkg in firefox btop
+for pkg in firefox btop zsh alpine-zsh-config
 do
 	if enabled 'packages.'$pkg
 	then
@@ -332,7 +342,7 @@ case $preset in
 				# TODO: carefully test before doing this
 				# (every failed test interrupts the terminal)
 				#rc-service greetd start
-				#rc-update add greetd
+				rc-update add greetd
 				;;
 			none)
 				;;
@@ -364,6 +374,15 @@ do
 		apk del $tmp_pkg
 	fi
 done
+
+
+# config
+if [ $(config 'config.shell') = "zsh" ]
+then
+	# every user will use zsh
+	sed -i 's/ash/zsh/g' /etc/passwd
+fi
+
 
 # disk install
 yes | setup-disk -m sys /dev/vda

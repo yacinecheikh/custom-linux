@@ -72,4 +72,9 @@ packages:
   firefox: true
   btop: false
   yq: true
+  zsh: true
+  alpine-zsh-config: true
 
+config:
+  # ash | zsh
+  shell: zsh
