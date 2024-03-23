@@ -353,7 +353,15 @@ case $preset in
 		echo "login: $login"
 		;;
 	xfce)
-		echo "not implemented"
+		# on a clean alpine install, these instructions are enough to make XFCE work
+		# test these instructions manually first, and then install
+		setup-xorg-base
+		apk add xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter
+		#rc-service lightdm start
+		rc-update add lightdm
+		# udev is already setup by the init script
+		#setup-devd udev
+		#echo "not implemented"
 		;;
 esac
 
