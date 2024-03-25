@@ -155,6 +155,7 @@ setup-keymap
 setup-keymap <layout> <variant>
 
 # configure the Alpine repositories (optional)
+# this is only needed if you want to install new packages, like jq, before installing
 setup-apkrepos
 # OR (non-interactive):
 setup-apkrepos -1 -c # -1 is the first repository mirror, -c enables the community repository
