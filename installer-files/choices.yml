@@ -9,14 +9,14 @@ verbose: true
 system:
   # system layout, does not affect Xorg settings
   keyboard:
-    # default: us
-    layout: fr
-    # default: us
-    variant: fr-bepo
+    #layout: fr
+    layout: us
+    #variant: fr-bepo
+    variant: us
   # default: localhost
   hostname: alpine
-  # default: UTC
-  timezone: Europe/Paris
+  #timezone: Europe/Paris
+  timezone: UTC
   repository:
     apk:
       # mirror: default | fastest | random
@@ -34,7 +34,7 @@ system:
   # use the Guix package manager when available
   guix: true
   # system services
-  # disabling them is probably a bad idea
+  # disabling these is probably a bad idea
   services:
     networkmanager: true
     seedrng: true
@@ -45,7 +45,8 @@ system:
 graphics:
   # preset: river | xfce | none
   # installing multiple graphical interfaces is not supported
-  preset: river
+  # (especially since installing XFCE after River doesn't work)
+  preset: xfce
   options:
     river:
       # launcher: wofi | bemenu
@@ -65,8 +66,9 @@ graphics:
       # this setting uses setxkbmap to set the correct layout at lightdm startup
       # use "none" to skip this and keep the Xorg default behaviour
       xkeyboard:
-        layout: fr
-        variant: bepo
+        layout: none
+        #layout: fr
+        #variant: bepo
 
 services:
   # ssh: openssh | none
@@ -76,6 +78,8 @@ services:
 
 packages:
   vim: true
+  # "only by removing nano can true minimalism be achieved"
+  # - said me
   nano: false
   firefox: true
   btop: false
