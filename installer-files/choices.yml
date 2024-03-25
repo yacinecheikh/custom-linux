@@ -7,6 +7,7 @@ verbose: true
 
 
 system:
+  # system layout, does not affect Xorg settings
   keyboard:
     # default: us
     layout: fr
@@ -59,6 +60,13 @@ graphics:
       terminal: foot
       # explorer: thunar | none
       explorer: thunar
+    xfce:
+      # by default, Xorg uses the qwerty keyboard and ignores the system layout
+      # this setting uses setxkbmap to set the correct layout at lightdm startup
+      # use "none" to skip this and keep the Xorg default behaviour
+      xkeyboard:
+        layout: fr
+        variant: bepo
 
 services:
   # ssh: openssh | none

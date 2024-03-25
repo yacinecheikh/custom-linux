@@ -347,10 +347,9 @@ case $preset in
 			none)
 				;;
 			*)
+				error_unknown graphics.options.river.login
 				;;
 		esac
-		echo "not implemented"
-		echo "login: $login"
 		;;
 	xfce)
 		# on a clean alpine install, these instructions are enough to make XFCE work
@@ -359,9 +358,20 @@ case $preset in
 		apk add xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter
 		#rc-service lightdm start
 		rc-update add lightdm
+
+
+		# replace lightdm keyboard
+		layout=$(config graphics.options.xfce.xkeyboard.layout)
+		variant=$(config graphics.options.xfce.xkeyboard.variant)
+
+		if ! [ "$layout" = "none" ]
+		then
+			apk add setxkbmap
+			sed -i "s/#display-setup-script=/display-setup-script=setxkbmap $layout $variant/g" /etc/lightdm/lightdm.conf
+		fi
+
 		# udev is already setup by the init script
 		#setup-devd udev
-		#echo "not implemented"
 		;;
 esac
 
