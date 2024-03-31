@@ -86,6 +86,7 @@ packages:
   yq: true
   zsh: true
   alpine-zsh-config: true
+  flatpak: false
 
 config:
   # ash | zsh

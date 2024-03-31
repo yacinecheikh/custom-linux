@@ -186,7 +186,7 @@ passwd -l root
 apk update
 
 # packages
-for pkg in firefox btop zsh alpine-zsh-config
+for pkg in firefox btop zsh alpine-zsh-config flatpak
 do
 	if enabled 'packages.'$pkg
 	then
