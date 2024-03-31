@@ -375,6 +375,13 @@ case $preset in
 		;;
 esac
 
+# configure the system
+if [ $(config 'config.shell') = "zsh" ]
+then
+	# every user will use zsh
+	sed -i 's/ash/zsh/g' /etc/passwd
+fi
+
 
 # remove live packages and services which have been disabled
 
@@ -385,6 +392,7 @@ then
 	apk del networkmanager
 fi
 
+# yq has to be removed last (since the configuration checks rely on it)
 for tmp_pkg in vim nano yq
 do
 	if ! enabled 'packages.'$tmp_pkg
@@ -393,13 +401,6 @@ do
 	fi
 done
 
-
-# config
-if [ $(config 'config.shell') = "zsh" ]
-then
-	# every user will use zsh
-	sed -i 's/ash/zsh/g' /etc/passwd
-fi
 
 
 # disk install
