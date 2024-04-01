@@ -194,7 +194,7 @@ passwd -l root
 apk update
 
 # packages
-for pkg in firefox btop zsh alpine-zsh-config flatpak cryptsetup gcompat docker docker-compose
+for pkg in firefox btop zsh alpine-zsh-config flatpak cryptsetup gcompat docker docker-compose tmux
 do
 	if enabled 'packages.'$pkg
 	then

@@ -95,6 +95,7 @@ packages:
   arch-install-scripts: true
   docker: true
   docker-compose: true
+  tmux: true
 
 patches:
   archroot: false
