@@ -52,6 +52,14 @@ then
 	echo "warning: installing zsh default config but not zsh"
 fi
 
+for pkg in bash wget curl
+do
+	if enabled 'patches.archroot' && ! enabled "packages.$pkg"
+	then
+		error packages.$pkg "the arch chroot requires $pkg"
+	fi
+done
+
 
 #===============
 # alpine install
@@ -186,7 +194,7 @@ passwd -l root
 apk update
 
 # packages
-for pkg in firefox btop zsh alpine-zsh-config flatpak
+for pkg in firefox btop zsh alpine-zsh-config flatpak cryptsetup gcompat docker docker-compose
 do
 	if enabled 'packages.'$pkg
 	then
@@ -195,6 +203,12 @@ do
 	fi
 done
 
+if enabled 'packages.docker'
+then
+	rc-update add docker
+	adduser $username docker
+	#echo "using docker as $username requires a logout"
+fi
 
 # services
 for service in polkit
@@ -232,6 +246,7 @@ case $ssh in
 	*)
 		error_unknown "services.ssh";;
 esac
+
 
 
 # graphics
@@ -375,12 +390,21 @@ case $preset in
 		;;
 esac
 
-# configure the system
+# configure the system and apply patches
 if [ $(config 'config.shell') = "zsh" ]
 then
 	# every user will use zsh
 	sed -i 's/ash/zsh/g' /etc/passwd
 fi
+
+if enabled 'patches.archroot' then
+	echo "not implemented"
+	#wget --no-check-certificate https://raw.github.com/tokland/arch-bootstrap/master/arch-bootstrap.sh
+	##mkdir archroot
+	## mkdir chroot64
+	#bash arch-bootstrap.sh -a x86_64 # archroot
+fi
+
 
 
 # remove live packages and services which have been disabled
@@ -389,7 +413,7 @@ if ! enabled 'system.services.networkmanager'
 then
 	rc-update del networkmanager boot
 	rc-service networkmanager stop
-	apk del networkmanager
+	pkgdel networkmanager
 fi
 
 # yq has to be removed last (since the configuration checks rely on it)
@@ -397,7 +421,7 @@ for tmp_pkg in vim nano yq
 do
 	if ! enabled 'packages.'$tmp_pkg
 	then
-		apk del $tmp_pkg
+		pkgdel $tmp_pkg
 	fi
 done
 

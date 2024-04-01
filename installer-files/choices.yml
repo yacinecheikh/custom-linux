@@ -83,10 +83,21 @@ packages:
   nano: false
   firefox: true
   btop: false
-  yq: true
+  yq: false
   zsh: true
   alpine-zsh-config: true
   flatpak: false
+  cryptsetup: true
+  gcompat: true
+  curl: true
+  wget: true
+  bash: false
+  arch-install-scripts: true
+  docker: true
+  docker-compose: true
+
+patches:
+  archroot: false
 
 config:
   # ash | zsh
