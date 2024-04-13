@@ -1,0 +1,12 @@
+yq
+vim
+nano
+networkmanager
+networkmanager-cli
+eudev
+networkmanager-openrc
+eudev-openrc
+udev-init-scripts-openrc
+dbus-openrc
+python3
+py3-virtualenv
