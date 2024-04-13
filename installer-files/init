@@ -7,14 +7,19 @@ apks="$files/apks/x86_64"
 cp -r $files/install /root/
 cp -r $files/choices.yml /root/
 cp -r $files/config /root/
+#cp -r $files/.venv /root/
 #cp -r $files/apks /root
 cp $files/keys/user-*.rsa.pub /etc/apk/keys/
 echo "$files/apks" >> /etc/apk/repositories
 
 
+# TODO: remove this (merge with the "useable live environment")
 # dependencies for the install script
-apk add yq
+#apk add yq
 
+# TODO: fix the "cannot find package" ?
+# (once networkmanager is up, everything can be bootstrapped)
+# (can download packages instead of virtualenv and install pip)
 
 #=================================================================
 # prepare a useable live environment to configure the installation
@@ -47,4 +52,21 @@ apk add --force-non-repository $apks/networkmanager-openrc-*
 apk add --force-non-repository $apks/dbus-openrc-*
 
 rc-service networkmanager start
+# TODO: read the debug info and compare when this breaks
+ip a > ip.log
 
+# now that internet access is enabled, there is no need to keep all the packages locally (or rather, this is not possible due to unfixeable problems with apk)
+# TODO: wait until boostrap phase to install packages directly into the system (instead of live-installing everything from internet)
+
+# wait until connection is up before fetching mirrors
+# even though DNS fails and google cannot be reached, this is enough delay
+ping -c 1 google.com
+setup-apkrepos -1 -c  # py3-pip is only on community repositories
+# TODO: remove from the new system
+apk update
+apk upgrade
+
+apk add python3  #py3-pip
+#pip install pyaml
+apk add py3-yaml
+ip a > ip2.log

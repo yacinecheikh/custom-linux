@@ -8,5 +8,3 @@ networkmanager-openrc
 eudev-openrc
 udev-init-scripts-openrc
 dbus-openrc
-python3
-py3-virtualenv
