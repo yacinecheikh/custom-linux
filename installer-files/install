@@ -1,0 +1,597 @@
+#!/usr/bin/python3
+
+import sys
+from yaml import safe_load as yload, safe_dump as ydump
+import subprocess
+
+installconf = "/root/config"
+
+def error(src, msg):
+    print(f"error: {msg} ({src})")
+    sys.exit(1)
+
+def todo(src):
+    error(src, "not implemented")
+
+
+with open("/root/choices.yml") as f:
+    config = yload(f)
+
+def get(path):
+    "'a.b.c' -> ['a']['b']['c']"
+    c = config
+    keys = path.split(".")
+    for key in keys:
+        c = c[key]
+    return c
+
+def system(cmd, stdin=None, stderr=False):
+    "stdout[, stderr], errcode = system(command[, stdin][, stderr=True])"
+    # merge stdout and stderr, and return error code instead
+    if stdin is not None:
+        stdin = stdin.encode()
+    process = subprocess.Popen(cmd, shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE if stderr else subprocess.STDOUT)
+    out, err = process.communicate(stdin)
+    returncode = process.returncode
+    if stderr:
+        return out.decode(), err.decode(), returncode
+    else:
+        return out.decode(), returncode
+
+def systemp(cmd, stdin=None, stderr=False):
+    print("running:")
+    print(cmd)
+    results = system(cmd, stdin, stderr)
+    if stderr:
+        out, err, code = results
+        print("stdout:")
+        print(out)
+        print("stderr:")
+        print(err)
+        print("return code:")
+        print(code)
+    else:
+        out, err = results
+        print("stdout:")
+        print(out)
+        print("stderr:")
+        print(err)
+
+
+verbose = get('settings.installer.verbose')
+
+# wrappers for system() calls
+def persist(path):
+	# saves filesystem changes to persist after install and reboot
+    system(f"lbu add {path}")
+
+def add(pkg):
+    out, code = system(f"apk add {pkg}")
+    if verbose:
+        print(out)
+
+
+# TODO: rename
+def remove(pkg):
+    system(f"apk del {pkg}")
+
+
+#===============
+# dependency checks
+#===============
+
+#if [ $(config 'graphics.preset') = "river" ] && ! enabled 'system.repository.apk.edge-testing'
+#then
+#	error system.repository.apk.edge-testing "riverwm requires enabling the apk edge/testing repository"
+#fi
+#
+#if enabled 'packages.alpine-zsh-config' && ! enabled 'packages.zsh'
+#then
+#	echo "warning: installing zsh default config but not zsh"
+#fi
+#
+#for pkg in bash wget curl
+#do
+#	if enabled 'patches.archroot' && ! enabled "packages.$pkg"
+#	then
+#		error packages.$pkg "the arch chroot requires $pkg"
+#	fi
+#done
+
+
+#===============
+# alpine install
+#===============
+
+
+# system settings to do before installing
+
+# keyboard
+layout = get('settings.user.keyboard.layout')
+variant = get('settings.user.keyboard.variant')
+system(f"setup-keymap {layout} {layout}-{variant}")
+# hostname
+hostname = get("settings.user.hostname")
+system(f"setup-hostname {hostname}")
+system(f"rc-service hostname restart")
+# timezone
+timezone = get("settings.user.timezone")
+system(f"setup-timezone {timezone}")
+# apk repos
+mirror = get("settings.system.repository.apk.mirror")
+switch = {
+    "default": "-1",
+    "fastest": "-f",
+    "random": "-r",
+}
+args = switch[mirror]
+if get("settings.system.repository.apk.community"):
+    args += " -c"
+system(f"setup-apkrepos {args}")
+# this repository is added differently because the setup-apkrepos script does not have an option for test repos
+if get("settings.system.repository.apk.edge-testing"):
+    url, _ = system("cat /etc/apk/repositories | tail -n 1 | cut -d / -f 1-4")
+    edge_testing = f"{url}/edge/testing"
+	system(f"echo {edge_testing} >> /etc/apk/repositories")
+
+# TODO: move this after chroot
+
+# main user
+username = get("settings.user.username")
+password = get("settings.user.password")
+fullname = get("settings.user.fullname")
+# -a: admin (using this installs doas automatically)
+# -g: groups
+system(f"""setup-user -a -g 'audio video netdev' -f "{fullname}" "{username}" """)
+# networkmanager uses the plugdev group for rootless interface management
+if get("features.system.networkmanager"):
+    system(f"adduser {username} plugdev")
+
+# set the password for the user
+# TODO: replace "echo |" with stdin=
+system(f'echo "{username}:{password} | chpasswd')
+persist(f"/home/{username}")
+
+
+
+
+# ========
+# simple efi manual install
+# ========
+
+
+def getram():
+    "return ram size in MB"
+    out, _ = system("free -m | tr -s ' ' | head -n 2 | tail -n 1 | cut -d ' ' -f 1")
+    return int(out)
+
+
+def getswap(swaptype):
+    "return desired swap size"
+    swap = get(f"settings.install.swap.{swaptype}")
+    if swap == "none":
+        return 0
+    elif swap == "auto":
+        size = getram()
+    elif swap[-1] == "G":
+        # 0.5G -> 512 (M)
+        size = int(float(swap[:-1]) * 1024)
+    else:
+        size = int(swap[:-1])
+
+    return size
+
+
+
+device = get('settings.install.device')
+if device == "auto":
+    todo("settings.install.device")
+    #device = "/dev/vda"
+    #detected_devices=$(lsblk -no NAME,SIZE,TYPE | grep disk | tr -s " " | cut -d " " -f 1)
+else:
+    # TODO: verify the path exists (or list devices)
+    pass
+# TODO: install parted (and remove it from the chroot)
+
+boot = get("settings.install.boot")
+if boot != "efi":
+    todo("settings.install.boot")
+if boot == "efi":
+    # TODO: move the gpt code here
+    pass
+
+mode = get("settings.install.mode")
+#mountpoint = system("mktemp -d")
+mountpoint = "/mnt"
+
+system("apk add parted")
+
+cmd = f"yes | parted {device}"
+# partition table
+system(f"{cmd} mklabel gpt")
+# boot partition
+system(f"{cmd} mkpart boot 0 512M")
+system("mkfs.vfat {device}1")
+system(f"{cmd} set 1 boot on")
+
+fs = get("settings.install.filesystem")
+if fs == "btrfs":
+    system("apk add btrfs-progs")
+elif fs == "ext4":
+    # TODO: test
+    system("apk add e2fsprogs")
+
+# no luks/lvm
+if mode == "simple":
+    # position of next partition in the disk
+    next_offset = 512
+    next_index = 2
+    # swap partition
+    swap = getswap("partition")
+    if swap:
+        system(f"{cmd} mkpart swap {next_offset}M {next_offset + swap}M")
+        system(f"mkswap {device}{next_index}")
+        next_offset += swap
+        next_index += 1
+    # root partition
+    system(f"{cmd} mkpart root {next_offset}M 100%")
+    system(f"mkfs.{fs} {device}{next_index + 1}")
+    system(f"mount -t {fs} {device}{next_index + 1} {mountpoint}")
+
+    # install
+    system("mkdir -p {mountpoint}/boot/efi")
+    system("mount -t vfat {device}1 {mountpoint}/boot/efi")
+    system("BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}")
+elif mode == "full":
+    # luks+lvm
+    system(f"{cmd} mkpart crypt 512M 100%")
+    # TODO: check si cryptsetup marche du premier coup (peut-être un bug quantique, corrigé en upgradant)
+    system("apk add cryptsetup")
+    # TODO: check si la table de partition est actualisée
+    # TODO: mettre une vraie passphrase (prompt l'utilisateur)
+    passphrase = "user"
+    system(f"echo -e 'YES\n{passphrase}' | cryptsetup luksFormat {device}2")
+    system(f"echo '{passphrase}' | cryptsetup open {device}2 custom_crypt")
+    system("apk add lvm2")
+    system(f"pvcreate /dev/mapper/custom_crypt")
+    system(f"vgcreate custom /dev/mapper/custom_crypt")
+    # create swap
+    swap = getswap("partition")
+    if swap:
+        system(f"lvcreate --size {swap}M --name swap custom")
+        system(f"mkswap /dev/custom/swap")
+    # create secondary (encrypted) boot
+    system(f"lvcreate --size 2G --name boot custom")
+    system(f"mkfs.ext4 /dev/custom/boot")
+    # create root
+    system(f"lvcreate -l 100%FREE --name root custom")
+    system(f"mkfs.{fs} /dev/custom/root")
+
+    # prepare filesystem
+    system(f"mount -t ext4 /dev/custom/root {mountpoint}")
+    system(f"mkdir {mountpoint}/boot")
+    system(f"mount -t ext4 /dev/custom/boot {mountpoint}/boot")
+    system(f"mkdir {mountpoint}/boot/efi")
+    system(f"mount -t vfat {device}1 {mountpoint}/boot/efi")
+
+    # là là ici là
+    # TODO: lire les messages d'erreur
+    # TODO: finir l'installateur pour tester plus facilement
+    # TODO: essayer de reproduire le même environnement (alpine pur, mêmes paquets,...)
+    # TODO: si ça ne suffit pas, réessayer en MBR ? (ou appeler à l'aide sur un alpine natif efi+luks+lvm)
+    system(f"setup-disk -m sys /mnt")
+else:
+    error_unknown("settings.install.mode")
+
+system("mkdir -p {mountpoint}/boot/efi")
+system("mount -t vfat {device}1 {mountpoint}/boot/efi")
+
+# là là ici là
+
+# Alpine wiki: LVM on LUKS
+# info: GRUB nécessaire pour gpt, syslinux meilleur en mbr
+# test: partition boot en ext4 ? (en tout cas, mkpart avec type=ext4, et seulement en MBR)
+# TODO: faire une deuxième partition de boot ?
+# (partition root et partition boot dans le luks+lvm)
+# TODO: dd if=/dev/urandom of=/dev/sda2 bs=1M
+# TODO: 2GB boot partition (avant de faire le custom/root)
+# TODO: formatté en ext4 le root
+# TODO: apk add dosfstools ?
+# TODO: test: mkfs.fat -F32 /dev/vda1 (boot efi) au lieu de vfat
+# TODO: monter boot encrypté sur /mnt/boot, PUIS /dev/vda1 sur /dev/boot/efi
+# TODO: setup-disk -m sys /mnt
+
+# là là ici là
+# /dev/custom/swap  swap    swap    defaults    0 0
+# TODO: ajouté le swap au fstab manuellement
+
+# TODO: ajouté manuellement cryptsetup et keymap à "features" dans /mnt/etc/mkinitfs/mkinitfs.conf
+#   -> déjà fait, pas besoin
+    # TODO: voir si ça devient nécessaire quand setup-keymap se fait automatiquement
+    # (puisqu'il est fait en arch-chroot, après setup-disk -m sys /mnt)
+# ajouté cryptkey (pour utiliser le keyfile dans cryptsetup) et kms (pour le prompt de la passphrase au boot)
+
+# TODO: tester mkinitfs -L et voir ce qu'il manque comme features: ext4, lvm, usb,...
+# TODO: mkinitfs -c /mnt/etc/mkinitfs/mkinitfs.conf -b /mnt $(ls /mnt/lib/modules)
+
+# là là ici là
+# problème: /mnt/lib/modules n'existe pas
+#   -> test: laisser vide (ou utiliser /lib/modules)
+#   TODO: erreur: pas possible de mkinitfs
+
+# TODO: voir comment installer un bootloader (GRUB pour efi)
+# TODO: grub instructions:
+# # utiliser un keyfile pour ne pas répéter 2 fois la passphrase
+# touch /mnt/crypto_keyfile.bin # nom spécifique
+# chmod 600 /mnt/crypto_keyfile.bin
+# dd bs=512 count=4 if=/dev/urandom of=/mnt/crypto_keyfile.bin
+# cryptsetup luksAddKey /dev/vda2 /mnt/crypto_keyfile.bin
+# mount -t proc
+
+system("apk add mkinitfs")
+
+system("BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}")
+
+
+# ======
+# chroot modifications
+# ======
+
+# TODO: remove e2fsprogs, parted,...
+
+# TODO: optimize chroot
+# with chroot(/mnt) as system:
+# system() -> execute after end of block ?
+# (efficient, but cannot parse return values)
+
+system("apk add arch-install-scripts")
+
+def chroot(cmd, stdin=None, stderr=False):
+    return system(f"arch-chroot {mountpoint} {cmd}", stdin, stderr=stderr)
+
+def chadd(pkg):
+    out, code = chroot(f"apk add {pkg}")
+    if verbose:
+        print(out)
+
+def chdel(pkg):
+    out, code = chroot(f"apk del {pkg}")
+    if verbose:
+        print(out)
+
+
+def unknown(setting):
+    value = get(setting)
+    error(setting,"unrecognized setting: {value}")
+
+
+#=====================
+# system configuration
+#=====================
+
+# lock root account
+chroot("passwd -l root")
+
+# TODO: check if apkrepos are setup already or not (they need to be)
+chroot("apk update")
+chroot("apk upgrade")
+
+# system features
+
+# TODO: tester les rc-update en chroot (risque de mal marcher)
+
+# network is already taken care of by the init script
+# but has to be enabled after reboot
+if get("features.system.networkmanager"):
+    chroot("rc-update add networkmanager boot")
+
+if get("features.system.seedrng"):
+    chroot("rc-update add seedrng")
+
+if get("features.system.acpid"):
+    chroot("rc-update add acpid")
+
+if get("features.system.udisks2"):
+    chroot("apk add udisks2")
+
+if get("features.system.polkit"):
+    chroot("apk add polkit")
+    chroot("rc-update add polkit")
+    chroot("rc-service polkit start")
+
+
+# dev features
+if get("features.dev.docker"):
+    chroot("apk add docker")
+    chroot("apk add docker-compose")
+    chroot("rc-update add docker")
+	# this is what usually requires logging out to setup rootless docker management
+    chroot(f"adduser {username} docker")
+
+if get("features.dev.guix"):
+    print("guix: not implemented (skipping)")
+
+ssh = get("features.dev.ssh")
+if ssh == "openssh":
+    chroot("setup-sshd openssh")
+elif ssh == "none":
+    print("skipping ssh server")
+else:
+    unknown("features.dev.ssh")
+
+# TODO: check les packages, vim et nano doivent être retirés plutôt qu'ajoutés
+for pkg in ["curl", "wget", "nmap", "jq", "yq", "arch-install-scripts", "tmux", "vim", "nano"]:
+    if get(f"features.dev.{pkg}"):
+        chroot(f"apk add {pkg}")
+
+if get("features.dev.man"):
+    print("man: not implemented")
+
+if get("features.dev.archroot"):
+    # error, does not work yet
+	#wget --no-check-certificate https://raw.github.com/tokland/arch-bootstrap/master/arch-bootstrap.sh
+	##mkdir archroot
+	## mkdir chroot64
+	#bash arch-bootstrap.sh -a x86_64 # archroot
+fi
+    print("archroot: not implemented")
+if get("settings.system.shell") == "zsh":
+    chroot("apk add zsh")
+    chroot("apk add alpine-zsh-config")
+	# every user will use zsh
+    chroot("sed -i 's/ash/zsh/g' /etc/passwd")
+
+# user features
+if get("features.user.firefox"):
+    chroot("apk add firefox")
+
+if get("features.user.flatpak"):
+    chroot("apk add flatpak")
+
+if get("features.user.libreoffice"):
+    chroot("apk add libreoffice")
+
+# removed for now:
+# btop
+# gcompat
+# cryptsetup
+
+
+# TODO: trier à partir d'ici
+
+if get("features.system.polkit"):
+	# TODO: test
+	#mkdir -p /etc/polkit/rules.d
+    system(f"mv {installconf}/etc/polkit-1/rules.d/* /etc/polkit-1/rules.d/")
+
+# graphical interface
+preset = get("features.graphics.preset")
+if preset == "river":
+    print("river window manager")
+    system("apk add river")
+    system("rc-service seatd start")
+    system("rc-update add seatd boot")
+    system(f"adduser {username} seat")
+    system("apk add xwayland")
+    # udev is already setup by the init script (used by networkmanager)
+    #setup-devd udev
+
+    # river config
+    userconfig = f"/home/{username}/.config"
+    #riverconf = f"{userconfig}/river"
+    system(f"mkdir -p {riverconf}")
+
+    system(f"cp {installconf}/configs/river/river-init {userconfig}/river/init")
+    system(f"chmod +x {userconfig}/river/init")
+
+    launcher = get("graphics.river.launcher")
+    if launcher == "bemenu":
+        system("apk add bemenu")
+    elif launcher == "wofi":
+        todo("graphics.river.launcher")
+    elif launcher == "none":
+        print("skipping river launcher")
+    else:
+        unknown("graphics.river.launcher")
+
+    bar = get("graphics.river.bar")
+    if bar == "wayland":
+        system(f"mkdir {userconfig}/waybar")
+        system(f"cp {installconf}/configs/river/waybar-config.json {userconfig}/waybar/config")
+        system("apk add waybar")
+    elif bar == "none":
+        pass
+    else:
+        unknown("graphics.river.bar")
+
+    system(f"cp {installconf}/configs/river/xdg-profile.sh /etc/profile.d/xdg-runtime-dir.sh")
+
+    # TODO: chmod +x ?
+
+
+    system("apk add font-dejavu")
+
+    background = get("graphics.river.background")
+    if background == "swaybg":
+        system("apk add swaybg")
+    elif background == "none":
+        pass
+    else:
+        unknown("graphics.river.background")
+
+    terminal = get("graphics.river.terminal")
+    if terminal == "foot":
+        system("apk add foot")
+    elif terminal == "none":
+        pass
+    else:
+        unknown("graphics.river.terminal")
+
+    # needed for waybar
+    system("apk add dbus")
+    system("apk add dbus-x11")
+
+    explorer = get("graphics.river.explorer")
+    if explorer == "thunar":
+        system("apk add thunar")
+    elif explorer == "none":
+        pass
+    else:
+        unknown("graphics.river.explorer")
+
+    # là là ici là
+    login = get("graphics.river.login")
+    if login == "greetd-wlgreet":
+        print("setting up greetd session manager")
+        system("apk add greetd-wlgreet")
+        system(f"cp {installconf}/configs/river/greetd-config.toml /etc/greetd/config.toml")
+        system(f"cp {installconf}/configs/river/river-wlgreet-config /etc/greetd/river-wlgreet-config")
+
+        system("chmod +x /etc/greetd/river-wlgreet-config")
+        #chmod u+x /etc/greetd/river-wlgreet-config
+        #chown greetd /etc/greetd/river-wlgreet-config
+        system("adduser greetd seat")
+
+        # TODO: carefully test before doing this
+        # (every failed test interrupts the terminal)
+        #rc-service greetd start
+        rc-update add greetd
+    elif login == "none":
+        pass
+    else:
+        unknown("graphics.river.login")
+
+
+elif preset == "xfce":
+    system("setup-xorg-base")
+    system("apk add xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter")
+    #rc-service lightdm start
+    system("rc-update add lightdm")
+    # replace lightdm keyboard
+#		layout=$(config graphics.options.xfce.xkeyboard.layout)
+#		variant=$(config graphics.options.xfce.xkeyboard.variant)
+#		if ! [ "$layout" = "none" ]
+    system("apk add setxkbmap")
+    system(f"sed -i 's/#display-setup-script=/display-setup-script=setxkbmap {layout} {variant}/g' /etc/lightdm/lightdm.conf")
+    # udev is already setup by the init script
+    #setup-devd udev
+else:
+    unknown("graphics.preset")
+
+
+# remove unused (installer) packages
+if not get("features.system.networkmanager"):
+    system("rc-update del networkmanager boot")
+    system("rc-service networkmanager stop")
+    system("apk del networkmanager")
+
+# TODO: remove python
+
+for pkg in ["vim", "nano", "yq"]:
+    if not get(f"features.dev.{pkg}"):
+        system(f"apk del {pkg}")
+
+# system("yes | setup-disk -m sys /dev/vda")
+
