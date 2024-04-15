@@ -52,12 +52,14 @@ def systemp(cmd, stdin=None, stderr=False):
         print(err)
         print("return code:")
         print(code)
+        return out, err, code
     else:
-        out, err = results
+        out, code = results
         print("stdout:")
         print(out)
-        print("stderr:")
-        print(err)
+        print("return code:")
+        print(code)
+        return out, code
 
 
 verbose = get('settings.installer.verbose')
@@ -76,6 +78,12 @@ def add(pkg):
 # TODO: rename
 def remove(pkg):
     systemp(f"apk del {pkg}")
+
+
+# TODO: wrappers around system()
+# -print command and output if return code is not as expected (0 usually)
+# -add/remove packages (repeated often)
+
 
 
 #===============
@@ -111,7 +119,10 @@ def remove(pkg):
 # keyboard
 layout = get('settings.user.keyboard.layout')
 variant = get('settings.user.keyboard.variant')
-systemp(f"setup-keymap {layout} {layout}-{variant}")
+if variant == layout:
+    systemp(f"setup-keymap {layout} {variant}")
+else:
+    systemp(f"setup-keymap {layout} {layout}-{variant}")
 # hostname
 hostname = get("settings.user.hostname")
 systemp(f"setup-hostname {hostname}")
@@ -151,7 +162,7 @@ if get("features.system.networkmanager"):
 
 # set the password for the user
 # TODO: replace "echo |" with stdin=
-systemp(f'echo "{username}:{password} | chpasswd')
+systemp(f'echo "{username}:{password}" | chpasswd')
 persist(f"/home/{username}")
 
 
@@ -164,7 +175,7 @@ persist(f"/home/{username}")
 
 def getram():
     "return ram size in MB"
-    out, _ = systemp("free -m | tr -s ' ' | head -n 2 | tail -n 1 | cut -d ' ' -f 1")
+    out, _ = systemp("free -m | tr -s ' ' | head -n 2 | tail -n 1 | cut -d ' ' -f 2")
     return int(out)
 
 
@@ -187,12 +198,17 @@ def getswap(swaptype):
 
 device = get('settings.install.device')
 if device == "auto":
-    todo("settings.install.device")
+    systemp("apk add lsblk")
+    out, _ = systemp("lsblk -r -no NAME,TYPE | grep disk | cut -d ' ' -f 1")
+    dev = out.split("\n")[0]
+    device = f"/dev/{dev}"
+    #todo("settings.install.device")
+    print(f"installing on {device}")
     #device = "/dev/vda"
     #detected_devices=$(lsblk -no NAME,SIZE,TYPE | grep disk | tr -s " " | cut -d " " -f 1)
-else:
-    # TODO: verify the path exists (or list devices)
-    pass
+
+# TODO: verify the device exists
+
 # TODO: install parted (and remove it from the chroot)
 
 boot = get("settings.install.boot")
@@ -208,12 +224,17 @@ mountpoint = "/mnt"
 
 systemp("apk add parted")
 
+# wipe the existing partition tables
+systemp("apk add wipefs")
+systemp(f"wipefs {device} -af")
+
 cmd = f"yes | parted {device}"
 # partition table
+# TODO: remove existing partition table first
 systemp(f"{cmd} mklabel gpt")
 # boot partition
 systemp(f"{cmd} mkpart boot 0 512M")
-systemp("mkfs.vfat {device}1")
+systemp(f"mkfs.vfat {device}1")
 systemp(f"{cmd} set 1 boot on")
 
 fs = get("settings.install.filesystem")
@@ -237,8 +258,8 @@ if mode == "simple":
         next_index += 1
     # root partition
     systemp(f"{cmd} mkpart root {next_offset}M 100%")
-    systemp(f"mkfs.{fs} {device}{next_index + 1}")
-    systemp(f"mount -t {fs} {device}{next_index + 1} {mountpoint}")
+    systemp(f"mkfs.{fs} {device}{next_index}")
+    systemp(f"mount -t {fs} {device}{next_index} {mountpoint}")
 
     # install
     systemp("mkdir -p {mountpoint}/boot/efi")
@@ -285,8 +306,8 @@ elif mode == "full":
 else:
     error_unknown("settings.install.mode")
 
-systemp("mkdir -p {mountpoint}/boot/efi")
-systemp("mount -t vfat {device}1 {mountpoint}/boot/efi")
+systemp(f"mkdir -p {mountpoint}/boot/efi")
+systemp(f"mount -t vfat {device}1 {mountpoint}/boot/efi")
 
 # là là ici là
 
@@ -332,7 +353,7 @@ systemp("mount -t vfat {device}1 {mountpoint}/boot/efi")
 
 systemp("apk add mkinitfs")
 
-systemp("BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}")
+systemp(f"BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}")
 
 
 # ======
@@ -463,7 +484,7 @@ if get("features.user.libreoffice"):
 if get("features.system.polkit"):
     # TODO: test
     #mkdir -p /etc/polkit/rules.d
-    systemp(f"mv {installconf}/etc/polkit-1/rules.d/* /etc/polkit-1/rules.d/")
+    systemp(f"mv {installconf}/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/")
 
 # graphical interface
 preset = get("features.graphics.preset")
@@ -478,7 +499,7 @@ if preset == "river":
     #setup-devd udev
 
     # river config
-    userconfig = f"/home/{username}/.config"
+    userconfig = f"/mnt/home/{username}/.config"
     #riverconf = f"{userconfig}/river"
     systemp(f"mkdir -p {riverconf}")
 
@@ -505,7 +526,7 @@ if preset == "river":
     else:
         unknown("graphics.river.bar")
 
-    systemp(f"cp {installconf}/configs/river/xdg-profile.sh /etc/profile.d/xdg-runtime-dir.sh")
+    systemp(f"cp {installconf}/configs/river/xdg-profile.sh /mnt/etc/profile.d/xdg-runtime-dir.sh")
 
     # TODO: chmod +x ?
 
@@ -545,10 +566,10 @@ if preset == "river":
     if login == "greetd-wlgreet":
         print("setting up greetd session manager")
         systemp("apk add greetd-wlgreet")
-        systemp(f"cp {installconf}/configs/river/greetd-config.toml /etc/greetd/config.toml")
-        systemp(f"cp {installconf}/configs/river/river-wlgreet-config /etc/greetd/river-wlgreet-config")
+        systemp(f"cp {installconf}/configs/river/greetd-config.toml /mnt/etc/greetd/config.toml")
+        systemp(f"cp {installconf}/configs/river/river-wlgreet-config /mnt/etc/greetd/river-wlgreet-config")
 
-        systemp("chmod +x /etc/greetd/river-wlgreet-config")
+        systemp("chmod +x /mnt/etc/greetd/river-wlgreet-config")
         #chmod u+x /etc/greetd/river-wlgreet-config
         #chown greetd /etc/greetd/river-wlgreet-config
         systemp("adduser greetd seat")
@@ -573,7 +594,7 @@ elif preset == "xfce":
 #    	variant=$(config graphics.options.xfce.xkeyboard.variant)
 #    	if ! [ "$layout" = "none" ]
     systemp("apk add setxkbmap")
-    systemp(f"sed -i 's/#display-setup-script=/display-setup-script=setxkbmap {layout} {variant}/g' /etc/lightdm/lightdm.conf")
+    systemp(f"sed -i 's/#display-setup-script=/display-setup-script=setxkbmap {layout} {variant}/g' /mnt/etc/lightdm/lightdm.conf")
     # udev is already setup by the init script
     #setup-devd udev
 else:
