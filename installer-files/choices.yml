@@ -1,53 +1,102 @@
-# system parameters
-# this config is made to match my preferences
-# the "default" values in comments are the default values for Alpine Linux
-# (and what the real default config should be once i'm not the only user anymore)
+# some settings may implicitely add more packages (lvm and luks for example)
+settings:
+  installer:
+    verbose: true
 
-verbose: true
+  # how to install Custom
+  install:
+    # auto | <path>
+    device: auto
+    # efi | bios
+    boot: efi
+    # ext4 | btrfs
+    filesystem: btrfs
+    swap:
+      # none | auto | <size>G
+      partition: auto
+      # none | auto | <size>G
+      file: none
+    # simple | full
+    # full mode includes full disk encryption and LVM logical partitions
+    # simple mode uses physical partitions in clear (more suited to tinkerers and virtual machines)
+    mode: "simple"
+    simple: true
 
+  # settings for developpers and internal system parameters
+  system:
+    # ash | zsh
+    shell: zsh
+    repository:
+      apk:
+        # mirror: default | fastest | random
+        mirror: default
+        community: true
+        # edge/testing repository (needed for riverwm)
+        edge-testing: false
 
-system:
-  # system layout, does not affect Xorg settings
-  keyboard:
-    #layout: fr
-    layout: us
-    #variant: fr-bepo
-    variant: us
-  # default: localhost
-  hostname: alpine
-  #timezone: Europe/Paris
-  timezone: UTC
-  repository:
-    apk:
-      # mirror: default | fastest | random
-      mirror: default
-      community: true
-      # edge/testing repository (needed for riverwm)
-      edge-testing: false
+  # settings that concern users
   user:
     username: user
     password: user
     fullname: user
+    # TODO: use for xorg config and system config (fr/bepo -> fr/fr-bepo)
+    keyboard:
+      #layout: fr
+      layout: us
+      #variant: bepo
+      variant: us
+    hostname: custom
+    #timezone: Europe/Paris
+    timezone: UTC
 
-  # add the doc packages when available
-  man: true
-  # use the Guix package manager when available
-  guix: true
-  # system services
-  # disabling these is probably a bad idea
-  services:
+
+
+# features are optional content that can be disabled
+features:
+  # these should usually not be disabled
+  system:
     networkmanager: true
     seedrng: true
     crond: true
     acpid: true
+    polkit: true
+    udisks2: true
+  dev:
+    docker: true
+    guix: true
+    # ssh: openssh | none
+    ssh: openssh
 
+    #gcompat: true
+    #btop: false
 
-graphics:
-  # preset: river | xfce | none
-  # installing multiple graphical interfaces is not supported
-  # (especially since installing XFCE after River doesn't work)
-  preset: xfce
-  options:
+    # network
+    curl: true
+    wget: false
+    nmap: false
+
+    # bashing
+    man: true
+    jq: true
+    yq: false
+    arch-install-scripts: true
+    tmux: true
+    # TODO: decide where to put it (/opt/archroot ?)
+    archroot: false
+
+    # text editor
+    vim: true
+    # "only by removing nano can true minimalism be achieved"
+    # - said me
+    nano: false
+  user:
+    firefox: true
+    flatpak: true
+    libreoffice: true
+
+  graphics:
+    # preset: river | xfce | none
+    preset: xfce
     river:
       # launcher: wofi | bemenu
       launcher: bemenu
@@ -61,45 +110,4 @@ graphics:
       terminal: foot
       # explorer: thunar | none
       explorer: thunar
-    xfce:
-      # by default, Xorg uses the qwerty keyboard and ignores the system layout
-      # this setting uses setxkbmap to set the correct layout at lightdm startup
-      # use "none" to skip this and keep the Xorg default behaviour
-      xkeyboard:
-        layout: none
-        #layout: fr
-        #variant: bepo
 
-services:
-  # ssh: openssh | none
-  ssh: openssh
-  polkit: true
-  udisks2: true
-
-packages:
-  vim: true
-  # "only by removing nano can true minimalism be achieved"
-  # - said me
-  nano: false
-  firefox: true
-  btop: false
-  yq: false
-  zsh: true
-  alpine-zsh-config: true
-  flatpak: false
-  cryptsetup: true
-  gcompat: true
-  curl: true
-  wget: true
-  bash: false
-  arch-install-scripts: true
-  docker: true
-  docker-compose: true
-  tmux: true
-
-patches:
-  archroot: false
-
-config:
-  # ash | zsh
-  shell: zsh
