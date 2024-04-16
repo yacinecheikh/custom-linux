@@ -2,6 +2,7 @@
 settings:
   installer:
     verbose: true
+    allow-prompt: false
 
   # how to install Custom
   install:
@@ -19,8 +20,17 @@ settings:
     # simple | full
     # full mode includes full disk encryption and LVM logical partitions
     # simple mode uses physical partitions in clear (more suited to tinkerers and virtual machines)
-    mode: "simple"
-    simple: true
+    mode: "full"
+
+
+    # disregard this in simple install mode
+    luks:
+      # write random data to the disk before formatting with luks
+      # should be true for physical disks, and false for virtual ones
+      randomize-disk: false
+      # null | "something"
+      # if null, the installer will prompt you for the passphrase
+      passphrase: "user"
 
   # settings for developpers and internal system parameters
   system:
