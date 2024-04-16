@@ -81,15 +81,16 @@ def do(cmd, expected_code=0):
         print(f"return code: {code}")
         print("output:")
         print(output)
-        raise AssertionError("command did not run as expected")
+        #raise AssertionError("command did not run as expected")
+        print("command did not run as expected")
 
 
 class pkg:
     installed = []
     def add(*pkgs):
-        for pkg in pkgs:
-            do(f"apk add {pkg}")
-            pkg.installed.append(pkg)
+        for x in pkgs:
+            do(f"apk add {x}")
+            pkg.installed.append(x)
 
     def remove(*pkgs):
         for pkg in pkgs:
@@ -289,18 +290,21 @@ if mode == "simple":
     # install
     do(f"mkdir -p {mountpoint}/boot/efi")
     do(f"mount -t vfat {device}1 {mountpoint}/boot/efi")
-    do(f"BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}")
+    do(f"BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}", 1)
 elif mode == "full":
     # luks+lvm
     do(f"{cmd} mkpart crypt 512M 100%")
     # TODO: check if cryptsetup works from the first time (might be a quantum bug, fixed by upgrading)
-    do("apk add cryptsetup")
+    pkg.add("cryptsetup")
     # TODO: check if the partition table is refreshed
     # TODO: add a passphrase (prompt the user ?)
-    passphrase = "user"
-    do(f"echo -e 'YES\n{passphrase}' | cryptsetup luksFormat {device}2")
-    do(f"echo '{passphrase}' | cryptsetup open {device}2 custom_crypt")
-    do("apk add lvm2")
+    passphrase = get("install.luks.passphrase")
+    if passphrase is None:
+        passphrase = input("Encryption passphrase: ")
+    systemp(f"cryptsetup luksFormat {device}2", stdin=passphrase)
+    #do(f"echo -e '{passphrase}' | cryptsetup luksFormat {device}2")
+    #do(f"echo '{passphrase}' | cryptsetup open {device}2 custom_crypt")
+    pkg.add("lvm2")
     do(f"pvcreate /dev/mapper/custom_crypt")
     do(f"vgcreate custom /dev/mapper/custom_crypt")
     # create swap

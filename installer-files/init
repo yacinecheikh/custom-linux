@@ -54,9 +54,24 @@ apk add --force-non-repository $apks/dbus-openrc-*
 rc-service networkmanager start
 # TODO: read the debug info and compare when this breaks
 ip a > ip.log
+nmcli device > nmcli.log
 
 # now that internet access is enabled, there is no need to keep all the packages locally (or rather, this is not possible due to unfixeable problems with apk)
 # TODO: wait until boostrap phase to install packages directly into the system (instead of live-installing everything from internet)
+
+# wait until an ip address is found
+# alternative: nmcli device gives empty string
+interfaces=$(ip a | grep "^\d" | cut -d ":" -f 2 | cut -c 2- | grep -v lo)
+interface=$(echo "$interfaces" | head -n 1)
+ip=$(ip addr show $interface | grep inet)
+while [ -z "$ip" ]
+do
+	sleep 0.1
+	ip=$(ip addr show $interface | grep inet)
+done
+
+# TODO: wait until dns resolution works (nslookup ?)
+
 
 # wait until connection is up before fetching mirrors
 # even though DNS fails and google cannot be reached, this is enough delay
@@ -70,3 +85,4 @@ apk add python3  #py3-pip
 #pip install pyaml
 apk add py3-yaml
 ip a > ip2.log
+nmcli device > nmcli2.log
