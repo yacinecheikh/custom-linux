@@ -20,7 +20,7 @@ settings:
     # simple | full
     # full mode includes full disk encryption and LVM logical partitions
     # simple mode uses physical partitions in clear (more suited to tinkerers and virtual machines)
-    mode: "full"
+    mode: full
 
 
     # disregard this in simple install mode
@@ -30,7 +30,7 @@ settings:
       randomize-disk: false
       # null | "something"
       # if null, the installer will prompt you for the passphrase
-      passphrase: "user"
+      passphrase: null
 
   # settings for developpers and internal system parameters
   system:
@@ -51,13 +51,13 @@ settings:
     fullname: user
     # TODO: use for xorg config and system config (fr/bepo -> fr/fr-bepo)
     keyboard:
-      #layout: fr
-      layout: us
-      #variant: bepo
-      variant: us
+      layout: fr
+      #layout: us
+      variant: bepo
+      #variant: us
     hostname: custom
-    #timezone: Europe/Paris
-    timezone: UTC
+    timezone: Europe/Paris
+    #timezone: UTC
 
 
 
