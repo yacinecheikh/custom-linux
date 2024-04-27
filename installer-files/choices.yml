@@ -124,6 +124,9 @@ packages:
   - vim
 
 
+services: []
+
+
 graphics:
   # preset: river | xfce | none
   preset: xfce

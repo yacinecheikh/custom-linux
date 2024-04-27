@@ -3,11 +3,13 @@
 from installer_settings import verbose, auto, mountpoint as mnt
 
 from lib.core import system, get
-from lib.wrappers import do, error, todo, confirm, passwd, unknown
+from lib.wrappers import do, passwd, chrcadd, chrcdel, chrcstart, chrcstop, chdo, chroot
+from lib.utils import error, todo, confirm, unknown
 
 import sys
 
 username = get("settings.user.username")
+installconf = "/root/config"
 
 #==============
 # custom system
@@ -17,29 +19,32 @@ username = get("settings.user.username")
 install_switch = {
     # system features
     # TODO: add flatpak (with flathub)
+    # TODO: require community/testing repo
 
     "polkit": lambda: [
-        chadd("polkit"), chrcadd("polkit"), chrcstart("polkit"),
+        chadd(mnt, "polkit"), chrcadd(mnt, "polkit"), chrcstart(mnt, "polkit"),
         # TODO: test
         #mkdir -p /etc/polkit/rules.d
-        chdo(f"mv {installconf}/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/"),
+        do(f"mv {installconf}/etc/polkit-1/rules.d/* {mnt}/etc/polkit-1/rules.d/"),
         ],
     # network is already taken care of by the init script
     # but has to be enabled after reboot
-    "networkmanager": lambda: [chrcadd("networkmanager")],
-    "acpid": lambda: [chrcadd("acpid")],
-    "seedrng": lambda: [chrcadd("seedrng")],
-    "udisks": lambda: [chadd("udisks2")],
+    "networkmanager": lambda: [chrcadd(mnt, "networkmanager")],
+    "acpid": lambda: [chrcadd(mnt, "acpid")],
+    # TODO: move these to an alpine-specific script (customize-alpine ?)
+    "crond": lambda: [chrcadd(mnt, "crond")],
+    "seedrng": lambda: [chrcadd(mnt, "seedrng")],
+    "udisks": lambda: [chadd(mnt, "udisks2")],
     "man": lambda: [print("man: not implemented")],
 
     # dev features
     # the adduser is what usually requires logging out to setup rootless docker management
-    "docker": lambda: [chadd("docker"), chadd("docker-compose"), chrcadd("docker"), chdo(mnt, f"adduser {username} docker")],
+    "docker": lambda: [chadd(mnt, "docker"), chadd(mnt, "docker-compose"), chrcadd(mnt, "docker"), chdo(mnt, f"adduser {username} docker")],
     "guix": lambda: [print("guix: not implemented (skipping)")],
     "openssh": lambda: [chdo(mnt, "setup-sshd openssh")],
     # TODO: make this a setting (system.shell = ash | zsh | ...)
     # the sed command makes every existing user use zsh
-    "zsh": lambda: [chadd("zsh"), chadd("alpine-zsh-config"), chdo(mnt, "sed -i 's/ash/zsh/g' /etc/passwd")],
+    "zsh": lambda: [chadd(mnt, "zsh"), chadd(mnt, "alpine-zsh-config"), chdo(mnt, "sed -i 's/ash/zsh/g' /etc/passwd")],
 
     # arch root
     # TODO: decide where to put it (/opt/archroot ?)
@@ -174,13 +179,21 @@ elif preset == "xfce":
     chroot(mnt, "setup-xorg-base")
     chadd(mnt, "xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter")
     #rc-service lightdm start
-    chrcadd("lightdm")
+    chrcadd(mnt, "lightdm")
     # replace lightdm keyboard
 #    	layout=$(config graphics.options.xfce.xkeyboard.layout)
 #    	variant=$(config graphics.options.xfce.xkeyboard.variant)
 #    	if ! [ "$layout" = "none" ]
     chadd(mnt, "setxkbmap")
     old = "#display-setup-script="
+
+    layout = get('settings.user.keyboard.layout')
+    variant = get('settings.user.keyboard.variant')
+    if variant == layout:
+        do(f"setup-keymap {layout} {variant}")
+    else:
+        do(f"setup-keymap {layout} {layout}-{variant}")
+
     new = f"display-setup-script=setxkbmab {layout} {variant}"
     do(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
     # udev is already setup by the init script
@@ -191,9 +204,10 @@ else:
 
 # remove unused (installer) packages
 if not get("features.system.networkmanager"):
+    # the service is not added to rc-update if networkmanager is not enabled in the config file
     #chrcdel("networkmanager boot")
-    chrcstop("networkmanager")
-    chdel("networkmanager")
+    chrcstop(mnt, "networkmanager")
+    chdel(mnt, "networkmanager")
 
 for temp_package in (
         # init
@@ -201,9 +215,9 @@ for temp_package in (
         # partitioning
         "cryptsetup", "lvm2", "lsblk", "btrfs-progs", "e2fsprogs",
         # alpine-install
-        "parted", "wipefs", "arch-install-scripts");
+        "parted", "wipefs", "arch-install-scripts"):
     if temp_package not in get("features.packages"):
-        chdel(pkg)
+        chdel(mnt, pkg)
 
 # yq
 
