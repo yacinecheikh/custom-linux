@@ -1,8 +1,8 @@
 """
 Wrappers around shell commands
 """
-from deps import system
-from install_settings import verbose, auto
+from lib.core import system
+from installer_settings import verbose, auto
 
 import sys
 

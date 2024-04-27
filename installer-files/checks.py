@@ -1,4 +1,4 @@
-from deps import get
+from lib.core import get
 
 
 def check_dependencies():
