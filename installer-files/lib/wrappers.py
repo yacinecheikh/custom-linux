@@ -48,6 +48,9 @@ def passwd(prompt):
         if x == input(f"confirm: "):
             return x
 
+def persist(path):
+    # saves filesystem changes to persist after install and reboot
+    do(f"lbu add {path}")
 
 # ====================
 # more chroot wrappers

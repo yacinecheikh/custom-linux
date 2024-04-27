@@ -50,11 +50,6 @@ system:
   #timezone: UTC
 
 
-
-# these things require non-trivial setup
-features:
-  - x
-
 settings:
   # settings for developpers and internal system parameters
   system:
