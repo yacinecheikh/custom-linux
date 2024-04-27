@@ -1,40 +1,63 @@
+# system configuration
 # some settings may implicitely add more packages (lvm and luks for example)
+installer:
+  verbose: true
+  auto: true
+
+install:
+  # auto | <path>
+  device: auto
+  # efi | bios
+  boot: efi
+  # ext4 | btrfs
+  filesystem: btrfs
+  swap:
+    partition:
+      # use "auto" to let the installer choose
+      # or a size (0, 1G, 512M,...)
+      size: 0
+    file:
+      size: 0
+      path: /swapfile
+  # simple | full
+  # full mode includes a luks encrypted lvm root partition
+  # simple mode skips that (more suited to virtual machines and tinkerers who don't want to deal with the added complexity)
+  mode: full
+
+system:
+  # ash | zsh
+  shell: zsh
+  repository:
+    apk:
+      # mirror: default | fastest | random
+      mirror: default
+      community: true
+      # edge/testing repository (needed for riverwm)
+      edge-testing: false
+
+  # settings that concern users
+  user:
+    username: user
+    password: user
+    fullname: user
+  keyboard:
+    layout: fr
+    #layout: us
+    variant: bepo
+    #variant: us
+  hostname: custom
+  timezone: Europe/Paris
+  #timezone: UTC
+
+
+
+# these things require non-trivial setup
+features:
+  - x
+
 settings:
-  installer:
-    verbose: true
-    allow-prompt: false
-
-  # how to install Custom
-  install:
-    # auto | <path>
-    device: auto
-    # efi | bios
-    boot: efi
-    # ext4 | btrfs
-    filesystem: btrfs
-    swap:
-      # none | auto | <size>G
-      partition: auto
-      # none | auto | <size>G
-      file: none
-    # simple | full
-    # full mode includes full disk encryption and LVM logical partitions
-    # simple mode uses physical partitions in clear (more suited to tinkerers and virtual machines)
-    mode: full
-
-
-    # disregard this in simple install mode
-    luks:
-      # write random data to the disk before formatting with luks
-      # should be true for physical disks, and false for virtual ones
-      randomize-disk: false
-      # null | "something"
-      # if null, the installer will prompt you for the passphrase
-      passphrase: null
-
   # settings for developpers and internal system parameters
   system:
-    # ash | zsh
     shell: zsh
     repository:
       apk:
@@ -65,59 +88,61 @@ settings:
 features:
   # these should usually not be disabled
   system:
-    networkmanager: true
-    seedrng: true
-    crond: true
-    acpid: true
-    polkit: true
-    udisks2: true
+    - networkmanager
+    - seedrng
+    - crond
+    - acpid
+    - polkit
+    - udisks
+    - man
+
   dev:
-    docker: true
-    guix: true
-    # ssh: openssh | none
-    ssh: openssh
+    - docker
+    - guix
+    - openssh
+    - archroot
 
-    #gcompat: true
-    #btop: false
+packages:
+  - firefox
+  - libreoffice
 
-    # network
-    curl: true
-    wget: false
-    nmap: false
+  # making things work
+  - flatkpak
+  - gcompat
 
-    # bashing
-    man: true
-    jq: true
-    yq: false
-    arch-install-scripts: true
-    tmux: true
-    # TODO: decide where to put it (/opt/archroot ?)
-    archroot: false
+  # network
+  - curl
+  - wget
+  - nmap
 
-    # text editor
-    vim: true
-    # "only by removing nano can true minimalism be achieved"
-    # - said me
-    nano: false
-  user:
-    firefox: true
-    flatpak: true
-    libreoffice: true
+  - cryptsetup
 
-  graphics:
-    # preset: river | xfce | none
-    preset: xfce
-    river:
-      # launcher: wofi | bemenu
-      launcher: bemenu
-      # bar: waybar | none
-      bar: waybar
-      # background: swaybg | none
-      background: swaybg
-      # login: greetd-wlgreet | none
-      login: greetd-wlgreet
-      # terminal: foot | none
-      terminal: foot
-      # explorer: thunar | none
-      explorer: thunar
+  # shell utilities
+  - tmux
+  - byobu
+  - htop
+  - btop
+  - arch-install-scripts
+  - jq
+  # "only by removing nano can true minimalism be achieved"
+  # - said me
+  - vim
+
+
+graphics:
+  # preset: river | xfce | none
+  preset: xfce
+  river:
+    # launcher: wofi | bemenu
+    launcher: bemenu
+    # bar: waybar | none
+    bar: waybar
+    # background: swaybg | none
+    background: swaybg
+    # login: greetd-wlgreet | none
+    login: greetd-wlgreet
+    # terminal: foot | none
+    terminal: foot
+    # explorer: thunar | none
+    explorer: thunar
 

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# TODO: replace all this script with a graphical environment that already has a GUI for network
+
 # prepare the installer files
 
 files="/media/cdrom/custom"
@@ -15,21 +17,6 @@ echo "$files/apks" >> /etc/apk/repositories
 
 # TODO: remove this (merge with the "useable live environment")
 # dependencies for the install script
-#apk add yq
-
-# TODO: fix the "cannot find package" ?
-# (once networkmanager is up, everything can be bootstrapped)
-# (can download packages instead of virtualenv and install pip)
-
-#=================================================================
-# prepare a useable live environment to configure the installation
-#=================================================================
-
-
-# packages useful for the user
-apk add nano vim
-# adding vim creates an error, vim-common has to be installed manually
-apk add --force-non-repository $apks/vim-common-*
 
 
 # prepare network access with NetworkManager
@@ -61,7 +48,7 @@ nmcli device > nmcli.log
 
 # wait until an ip address is found
 # alternative: nmcli device gives empty string
-interfaces=$(ip a | grep "^\d" | cut -d ":" -f 2 | cut -c 2- | grep -v lo)
+interfaces=$(ip a | grep "^[0-9]" | cut -d ":" -f 2 | cut -c 2- | grep -v lo)
 interface=$(echo "$interfaces" | head -n 1)
 ip=$(ip addr show $interface | grep inet)
 while [ -z "$ip" ]
@@ -76,13 +63,22 @@ done
 # wait until connection is up before fetching mirrors
 # even though DNS fails and google cannot be reached, this is enough delay
 ping -c 1 google.com
+
+#=================================================================
+# prepare the environment a useable live environment to configure the installation
+#=================================================================
+
 setup-apkrepos -1 -c  # py3-pip is only on community repositories
 # TODO: remove from the new system
 apk update
 apk upgrade
+
 
 apk add python3  #py3-pip
 #pip install pyaml
 apk add py3-yaml
 ip a > ip2.log
 nmcli device > nmcli2.log
+
+# prepare the environment for the user
+apk add nano vim

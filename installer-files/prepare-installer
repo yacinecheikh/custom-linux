@@ -1,0 +1,12 @@
+#!/usr/bin/python3
+from lib.wrappers import do
+from checks import check_dependencies
+
+# TODO: run this between init and partition
+
+check_dependencies()
+
+# partition
+do("apk add cryptsetup lvm2 lsblk btrfs-progs e2fsprogs")
+# install-alpine
+do("apk add parted wipefs arch-install-scripts")

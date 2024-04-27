@@ -1,0 +1,210 @@
+#!/usr/bin/python3
+
+from installer_settings import verbose, auto, mountpoint as mnt
+
+from lib.core import system, get
+from lib.wrappers import do, error, todo, confirm, passwd, unknown
+
+import sys
+
+username = get("settings.user.username")
+
+#==============
+# custom system
+#==============
+
+# sorry, blame python for not having (defmacro)
+install_switch = {
+    # system features
+    # TODO: add flatpak (with flathub)
+
+    "polkit": lambda: [
+        chadd("polkit"), chrcadd("polkit"), chrcstart("polkit"),
+        # TODO: test
+        #mkdir -p /etc/polkit/rules.d
+        chdo(f"mv {installconf}/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/"),
+        ],
+    # network is already taken care of by the init script
+    # but has to be enabled after reboot
+    "networkmanager": lambda: [chrcadd("networkmanager")],
+    "acpid": lambda: [chrcadd("acpid")],
+    "seedrng": lambda: [chrcadd("seedrng")],
+    "udisks": lambda: [chadd("udisks2")],
+    "man": lambda: [print("man: not implemented")],
+
+    # dev features
+    # the adduser is what usually requires logging out to setup rootless docker management
+    "docker": lambda: [chadd("docker"), chadd("docker-compose"), chrcadd("docker"), chdo(mnt, f"adduser {username} docker")],
+    "guix": lambda: [print("guix: not implemented (skipping)")],
+    "openssh": lambda: [chdo(mnt, "setup-sshd openssh")],
+    # TODO: make this a setting (system.shell = ash | zsh | ...)
+    # the sed command makes every existing user use zsh
+    "zsh": lambda: [chadd("zsh"), chadd("alpine-zsh-config"), chdo(mnt, "sed -i 's/ash/zsh/g' /etc/passwd")],
+
+    # arch root
+    # TODO: decide where to put it (/opt/archroot ?)
+    # can be used to run musl-less programs
+    # does not work yet
+    #wget --no-check-certificate https://raw.github.com/tokland/arch-bootstrap/master/arch-bootstrap.sh
+    ##mkdir archroot
+    ## mkdir chroot64
+    #bash arch-bootstrap.sh -a x86_64 # archroot
+    "archroot": lambda: [print("archchroot: not implemented (skipping)")],
+}
+
+# system features
+for feature in get("features.system"):
+    if feature not in install_switch:
+        todo(f"features.system.{feature}")
+    else:
+        install_switch[feature]()
+
+# dev features
+for feature in get("features.dev"):
+    if feature not in install_switch:
+        todo(f"features.dev.{feature}")
+    else:
+        install_switch[feature]()
+
+# additional packages and services
+
+for package in get("packages"):
+    chadd(mnt, package)
+
+for service in get("services"):
+    chrcadd(mnt, service)
+
+
+# graphical interface
+preset = get("graphics.preset")
+if preset == "river":
+    print("river window manager")
+    chadd(mnt, "river")
+    chrcstart(mnt, "seatd")
+    chrcadd(mnt, "seatd boot")
+    chdo(mnt, f"adduser {username} seat")
+    chadd(mnt, "xwayland")
+    # udev is already setup by the init script (used by networkmanager)
+    #setup-devd udev
+
+    # river config
+    userconfig = f"/mnt/home/{username}/.config"
+    #riverconf = f"{userconfig}/river"
+    do(f"mkdir -p {riverconf}")
+
+    do(f"cp {installconf}/configs/river/river-init {userconfig}/river/init")
+    do(f"chmod +x {userconfig}/river/init")
+
+    launcher = get("graphics.river.launcher")
+    if launcher == "bemenu":
+        chadd(mnt, "bemenu")
+    elif launcher == "wofi":
+        todo("graphics.river.launcher")
+    elif launcher == "none":
+        print("skipping river launcher")
+    else:
+        unknown("graphics.river.launcher")
+
+    bar = get("graphics.river.bar")
+    if bar == "wayland":
+        do(f"mkdir {userconfig}/waybar")
+        do(f"cp {installconf}/configs/river/waybar-config.json {userconfig}/waybar/config")
+        chadd(mnt, "waybar")
+    elif bar == "none":
+        pass
+    else:
+        unknown("graphics.river.bar")
+
+    do(f"cp {installconf}/configs/river/xdg-profile.sh /mnt/etc/profile.d/xdg-runtime-dir.sh")
+
+    # TODO: chmod +x ?
+
+
+    chadd(mnt, "font-dejavu")
+
+    background = get("graphics.river.background")
+    if background == "swaybg":
+        chadd(mnt, "swaybg")
+    elif background == "none":
+        pass
+    else:
+        unknown("graphics.river.background")
+
+    terminal = get("graphics.river.terminal")
+    if terminal == "foot":
+        chadd(mnt, "foot")
+    elif terminal == "none":
+        pass
+    else:
+        unknown("graphics.river.terminal")
+
+    # needed for waybar
+    chadd(mnt, "dbus")
+    chadd(mnt, "dbus-x11")
+
+    explorer = get("graphics.river.explorer")
+    if explorer == "thunar":
+        chadd(mnt, "thunar")
+    elif explorer == "none":
+        pass
+    else:
+        unknown("graphics.river.explorer")
+
+    login = get("graphics.river.login")
+    if login == "greetd-wlgreet":
+        print("setting up greetd session manager")
+        chadd(mnt, "greetd-wlgreet")
+        do(f"cp {installconf}/configs/river/greetd-config.toml /mnt/etc/greetd/config.toml")
+        do(f"cp {installconf}/configs/river/river-wlgreet-config /mnt/etc/greetd/river-wlgreet-config")
+
+        do("chmod +x /mnt/etc/greetd/river-wlgreet-config")
+        #chmod u+x /etc/greetd/river-wlgreet-config
+        #chown greetd /etc/greetd/river-wlgreet-config
+        chroot(mnt, "adduser greetd seat")
+
+        # TODO: carefully test before doing this
+        # (every failed test interrupts the terminal)
+        #rc-service greetd start
+        chrcadd("greetd")
+    elif login == "none":
+        pass
+    else:
+        unknown("graphics.river.login")
+elif preset == "xfce":
+    chroot(mnt, "setup-xorg-base")
+    chadd(mnt, "xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter")
+    #rc-service lightdm start
+    chrcadd("lightdm")
+    # replace lightdm keyboard
+#    	layout=$(config graphics.options.xfce.xkeyboard.layout)
+#    	variant=$(config graphics.options.xfce.xkeyboard.variant)
+#    	if ! [ "$layout" = "none" ]
+    chadd(mnt, "setxkbmap")
+    old = "#display-setup-script="
+    new = f"display-setup-script=setxkbmab {layout} {variant}"
+    do(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
+    # udev is already setup by the init script
+    #setup-devd udev
+else:
+    unknown("graphics.preset")
+
+
+# remove unused (installer) packages
+if not get("features.system.networkmanager"):
+    #chrcdel("networkmanager boot")
+    chrcstop("networkmanager")
+    chdel("networkmanager")
+
+for temp_package in (
+        # init
+        "py3-yaml", "python3", "vim", "nano",
+        # partitioning
+        "cryptsetup", "lvm2", "lsblk", "btrfs-progs", "e2fsprogs",
+        # alpine-install
+        "parted", "wipefs", "arch-install-scripts");
+    if temp_package not in get("features.packages"):
+        chdel(pkg)
+
+# yq
+
+

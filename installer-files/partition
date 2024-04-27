@@ -1,0 +1,150 @@
+#!/usr/bin/python3
+
+from installer_settings import verbose, auto, mountpoint
+
+from lib.core import system, get
+from lib.wrappers import do, passwd
+from lib.utils import error, todo, confirm, unknown
+
+import sys
+
+device = get("install.device")
+boot = get("install.boot")
+fs = get("install.filesystem")
+mode = get("install.mode")
+
+
+def getram():
+    "return ram size in MB"
+    return int(do("free -m | tr -s ' ' | head -n 2 | tail -n 1 | cut -d ' ' -f 2"))
+
+
+def getswap(swaptype):
+    "return desired swap size"
+    swap = get(f"install.swap.{swaptype}.size")
+    if swap == 0:
+        return 0
+    elif swap == "auto":
+        size = getram()
+    elif swap[-1] == "G":
+        # 0.5G -> 512 (M)
+        size = int(float(swap[:-1]) * 1024)
+    else:
+        size = int(swap[:-1])
+
+    return size
+
+#print(getram())
+#print(getswap("partition"))
+swapfile_path = get("install.swap.file.path")
+
+
+
+# check the device
+if device == "auto":
+    out = do("lsblk -r -no NAME,TYPE | grep disk | cut -d ' ' -f 1")
+    options = out.split("\n")
+    if not options:
+        error("install.device", "could not detect any device")
+    dev = options[0]
+    device = f"/dev/{dev}"
+    # prompt for user confirmation if allowed
+    if not auto and not confirm(f"install on {device} ?"):
+        sys.exit(0)
+    print(f"installing on {device}")
+else:
+    _, code = system(f"ls {device}")
+    if code != 0:
+        error("install.device", f"device {device} could not be found")
+
+
+if not auto:
+    # check existing partition table on the device
+    out, _ = system(f"fdisk -l {device}")
+    print(f"fdisk -l {device}:")
+    print(out)
+
+    # TODO: prompt if something exists
+    # exit if no
+
+# wipe the existing partition tables
+do(f"wipefs {device} -af")
+
+
+# number of existing (physical) partitions
+part_index = 0
+# position of first free space
+offset = 0  # 0M
+
+cmd = f"yes | parted {device}"
+if boot == "efi":
+# partition table
+    do(f"{cmd} mklabel gpt")
+    # boot partition
+    do(f"{cmd} mkpart boot 0 512M")
+    do(f"mkfs.vfat {device}1")
+    do(f"{cmd} set 1 boot on")
+    part_index += 1
+    offset += 512
+elif boot == "mbr":
+    todo("install.boot")
+else:
+    unknown("install.boot")
+
+
+if mode == "simple":
+    # physical partitions only
+
+    # swap partition
+    swap = getswap("partition")
+    if swap:
+        do(f"{cmd} mkpart swap {offset}M {offset + swap}M")
+        part_index += 1
+        offset += swap
+        do(f"mkswap {device}{part_index}")
+    # root partition
+    do(f"{cmd} mkpart root {offset}M 100%")
+    part_index += 1
+    # TODO: force with -f (btrfs)
+    do(f"mkfs.{fs} {device}{part_index} -f")
+
+    # mount the filesystem (prepare for install)
+    do(f"mount -t {fs} {device}{part_index} {mountpoint}")
+    do(f"mkdir -p {mountpoint}/boot/efi")
+    do(f"mount -t vfat {device}1 {mountpoint}/boot/efi")
+    # TODO: move the alpine install to an other script
+    #do(f"BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}", 1)
+elif mode == "full":
+    # luks+lvm+encrypted boot
+    do(f"{cmd} mkpart crypt 512M 100%")
+    passphrase = passwd("luks encryption passphrase")
+    systemp(f"cryptsetup luksFormat {device}2", stdin=passphrase)
+    systemp(f"cryptsetup open {device}2 custom_crypt", stdin=passphrase)
+    do(f"pvcreate /dev/mapper/custom_crypt")
+    do(f"vgcreate custom /dev/mapper/custom_crypt")
+    # create secondary (encrypted) boot
+    do(f"lvcreate --size 2G --name boot custom")
+    do(f"mkfs.ext4 /dev/custom/boot")
+    # create swap
+    swap = getswap("partition")
+    if swap:
+        do(f"lvcreate --size {swap}M --name swap custom")
+        do(f"mkswap /dev/custom/swap")
+    # create root
+    do(f"lvcreate -l 100%FREE --name root custom")
+    do(f"mkfs.{fs} /dev/custom/root")
+
+    # prepare filesystem
+    do(f"mount -t ext4 /dev/custom/root {mountpoint}")
+    do(f"mkdir {mountpoint}/boot")
+    do(f"mount -t ext4 /dev/custom/boot {mountpoint}/boot")
+    do(f"mkdir {mountpoint}/boot/efi")
+    do(f"mount -t vfat {device}1 {mountpoint}/boot/efi")
+
+    # TODO: solution attempts for the current problem (/lib/modules missing from the chroot)
+    # TODO: read the error messages
+    # TODO: test with the installer (by going up to the level where things fail)
+    # TODO: try to reproduce the same environment as essayer de reproduire le même environnement (alpine pur, mêmes paquets,...)
+else:
+    unknown("install.mode")
+

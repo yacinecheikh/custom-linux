@@ -1,0 +1,306 @@
+#!/usr/bin/python3
+
+from deps import system, get
+from installer_settings import verbose, auto, mountpoint as mnt
+
+from lib.core import system, get
+from lib.wrappers import do, passwd, chroot, chdo, chadd, chdel, chrcadd, chrcstop, chrcstart, chrcdel
+from lib.utils import error, todo, confirm, unknown
+
+import sys
+
+
+# TODO: bootstrap alpine instead of cloning the installer
+
+
+mode = get("install.mode")
+if mode == "simple":
+    do(f"BOOTLOADER=grub USE_EFI=1 setup-disk -m sys {mountpoint}")
+elif mode == "full":
+    # TODO: test doing the mkinitfs AFTER configuring alpine
+    todo("install.mode")
+    #chroot(mnt, "apk add mkinitfs")
+else:
+    unknown("install.mode")
+
+#===============
+# alpine settings
+#===============
+
+# keyboard
+layout = get('settings.user.keyboard.layout')
+variant = get('settings.user.keyboard.variant')
+if variant == layout:
+    chdo(mnt, f"setup-keymap {layout} {variant}")
+else:
+    chdo(mnt, f"setup-keymap {layout} {layout}-{variant}")
+# hostname
+hostname = get("settings.user.hostname")
+chdo(mnt, f"setup-hostname {hostname}")
+chdo(mnt, f"rc-service hostname restart")
+# timezone
+timezone = get("settings.user.timezone")
+chdo(mnt, f"setup-timezone {timezone}")
+# apk repos
+mirror = get("settings.system.repository.apk.mirror")
+switch = {
+    "default": "-1",
+    "fastest": "-f",
+    "random": "-r",
+}
+args = switch[mirror]
+if get("settings.system.repository.apk.community"):
+    args += " -c"
+chdo(mnt, f"setup-apkrepos {args}")
+# this repository is added differently because the setup-apkrepos script does not have an option for test repos
+if get("settings.system.repository.apk.edge-testing"):
+    url = chdo(mnt, "cat /etc/apk/repositories | tail -n 1 | cut -d / -f 1-4")
+    edge_testing = f"{url}/edge/testing"
+    chdo(mnt, f"echo {edge_testing} >> /etc/apk/repositories")
+
+# TODO: move this after chdo
+
+# main user
+username = get("settings.user.username")
+password = get("settings.user.password")
+fullname = get("settings.user.fullname")
+# -a: admin (using this installs doas automatically)
+# -g: groups
+chdo(mnt, f"""setup-user -a -g 'audio video netdev' -f "{fullname}" "{username}" """)
+# networkmanager uses the plugdev group for rootless interface management
+if get("features.system.networkmanager"):
+    chdo(mnt, f"adduser {username} plugdev")
+
+# set the password for the user
+# TODO: replace "echo |" with stdin=
+chdo(mnt, "chpasswd", f"{username}:{password}")
+#chdo(mnt, f'echo "{username}:{password}" | chpasswd')
+persist(f"/home/{username}")
+
+# lock root account
+chdo(mnt, "passwd -l root")
+
+chdo(mnt, "apk update")
+chdo(mnt, "apk upgrade")
+
+#==============
+# custom system
+#==============
+
+# system features
+
+# network is already taken care of by the init script
+# but has to be enabled after reboot
+if get("features.system.networkmanager"):
+    chrcadd("networkmanager boot")
+# else: see later, once everything is installed
+
+if get("features.system.seedrng"):
+    chrcadd("seedrng")
+
+if get("features.system.acpid"):
+    chrcadd("acpid")
+    #chroot(mnt, "rc-update add acpid")
+
+if get("features.system.udisks2"):
+    chadd("udisks2")
+
+if get("features.system.polkit"):
+    chadd("polkit")
+    chrcadd("polkit")
+    chrcstart("polkit")
+
+
+# dev features
+
+if get("features.dev.docker"):
+    chadd("docker")
+    chadd("docker-compose")
+    chrcadd("docker")
+    # this is what usually requires logging out to setup rootless docker management
+    chroot(mnt, f"adduser {username} docker")
+
+if get("features.dev.guix"):
+    print("guix: not implemented (skipping)")
+
+ssh = get("features.dev.ssh")
+if ssh == "openssh":
+    chroot(mnt, "setup-sshd openssh")
+elif ssh == "none":
+    print("skipping ssh server")
+else:
+    unknown("features.dev.ssh")
+
+
+# TODO: check the packages, vim and nano must be removed instead of being added
+for pkg in ["curl", "wget", "nmap", "jq", "yq", "arch-install-scripts", "tmux", "vim", "nano"]:
+    if get(f"features.dev.{pkg}"):
+        chadd(pkg)
+
+if get("features.dev.man"):
+    print("man: not implemented")
+
+if get("features.dev.archroot"):
+    # error, does not work yet
+    #wget --no-check-certificate https://raw.github.com/tokland/arch-bootstrap/master/arch-bootstrap.sh
+    ##mkdir archroot
+    ## mkdir chroot64
+    #bash arch-bootstrap.sh -a x86_64 # archroot
+    print("archroot: not implemented")
+if get("settings.system.shell") == "zsh":
+    chadd("zsh")
+    chadd("alpine-zsh-config")
+    # every user will use zsh
+    chroot(mnt, "sed -i 's/ash/zsh/g' /etc/passwd")
+
+# user features
+if get("features.user.firefox"):
+    chadd("firefox")
+
+if get("features.user.flatpak"):
+    chadd("flatpak")
+
+if get("features.user.libreoffice"):
+    chadd("libreoffice")
+
+# removed for now:
+# btop
+# gcompat
+# cryptsetup
+
+
+if get("features.system.polkit"):
+    # TODO: test
+    #mkdir -p /etc/polkit/rules.d
+    do(f"mv {installconf}/etc/polkit-1/rules.d/* /mnt/etc/polkit-1/rules.d/")
+
+# graphical interface
+preset = get("features.graphics.preset")
+if preset == "river":
+    print("river window manager")
+    chadd("river")
+    chrcstart("seatd")
+    chrcadd("seatd boot")
+    chroot(mnt, f"adduser {username} seat")
+    chadd("xwayland")
+    # udev is already setup by the init script (used by networkmanager)
+    #setup-devd udev
+
+    # river config
+    userconfig = f"/mnt/home/{username}/.config"
+    #riverconf = f"{userconfig}/river"
+    do(f"mkdir -p {riverconf}")
+
+    do(f"cp {installconf}/configs/river/river-init {userconfig}/river/init")
+    do(f"chmod +x {userconfig}/river/init")
+
+    launcher = get("graphics.river.launcher")
+    if launcher == "bemenu":
+        chadd("bemenu")
+    elif launcher == "wofi":
+        todo("graphics.river.launcher")
+    elif launcher == "none":
+        print("skipping river launcher")
+    else:
+        unknown("graphics.river.launcher")
+
+    bar = get("graphics.river.bar")
+    if bar == "wayland":
+        do(f"mkdir {userconfig}/waybar")
+        do(f"cp {installconf}/configs/river/waybar-config.json {userconfig}/waybar/config")
+        chadd("waybar")
+    elif bar == "none":
+        pass
+    else:
+        unknown("graphics.river.bar")
+
+    do(f"cp {installconf}/configs/river/xdg-profile.sh /mnt/etc/profile.d/xdg-runtime-dir.sh")
+
+    # TODO: chmod +x ?
+
+
+    chadd("font-dejavu")
+
+    background = get("graphics.river.background")
+    if background == "swaybg":
+        chadd("swaybg")
+    elif background == "none":
+        pass
+    else:
+        unknown("graphics.river.background")
+
+    terminal = get("graphics.river.terminal")
+    if terminal == "foot":
+        chadd("foot")
+    elif terminal == "none":
+        pass
+    else:
+        unknown("graphics.river.terminal")
+
+    # needed for waybar
+    chadd("dbus")
+    chadd("dbus-x11")
+
+    explorer = get("graphics.river.explorer")
+    if explorer == "thunar":
+        chadd("thunar")
+    elif explorer == "none":
+        pass
+    else:
+        unknown("graphics.river.explorer")
+
+    login = get("graphics.river.login")
+    if login == "greetd-wlgreet":
+        print("setting up greetd session manager")
+        chadd("greetd-wlgreet")
+        systemp(f"cp {installconf}/configs/river/greetd-config.toml /mnt/etc/greetd/config.toml")
+        systemp(f"cp {installconf}/configs/river/river-wlgreet-config /mnt/etc/greetd/river-wlgreet-config")
+
+        systemp("chmod +x /mnt/etc/greetd/river-wlgreet-config")
+        #chmod u+x /etc/greetd/river-wlgreet-config
+        #chown greetd /etc/greetd/river-wlgreet-config
+        chroot(mnt, "adduser greetd seat")
+
+        # TODO: carefully test before doing this
+        # (every failed test interrupts the terminal)
+        #rc-service greetd start
+        chrcadd("greetd")
+    elif login == "none":
+        pass
+    else:
+        unknown("graphics.river.login")
+
+
+elif preset == "xfce":
+    chroot(mnt, "setup-xorg-base")
+    chadd("xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter")
+    #rc-service lightdm start
+    chrcadd("lightdm")
+    # replace lightdm keyboard
+#    	layout=$(config graphics.options.xfce.xkeyboard.layout)
+#    	variant=$(config graphics.options.xfce.xkeyboard.variant)
+#    	if ! [ "$layout" = "none" ]
+    chadd("setxkbmap")
+    old = "#display-setup-script="
+    new = f"display-setup-script=setxkbmab {layout} {variant}"
+    systemp(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
+    # udev is already setup by the init script
+    #setup-devd udev
+else:
+    unknown("graphics.preset")
+
+
+# remove unused (installer) packages
+if not get("features.system.networkmanager"):
+    chrcdel("networkmanager boot")
+    chrcstop("networkmanager")
+    chdel("networkmanager")
+
+# TODO: remove python
+
+for pkg in ["vim", "nano", "yq"]:
+    if not get(f"features.dev.{pkg}"):
+        chdel(pkg)
+
+# systemp("yes | setup-disk -m sys /dev/vda")
+
