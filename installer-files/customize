@@ -3,7 +3,7 @@
 from installer_settings import verbose, auto, mountpoint as mnt
 
 from lib.core import system, get
-from lib.wrappers import do, passwd, chrcadd, chrcdel, chrcstart, chrcstop, chdo, chroot
+from lib.wrappers import do, passwd, chrcadd, chrcdel, chrcstart, chrcstop, chdo, chroot, chadd, chdel
 from lib.utils import error, todo, confirm, unknown
 
 import sys
@@ -19,7 +19,7 @@ installconf = "/root/config"
 install_switch = {
     # system features
     # TODO: add flatpak (with flathub)
-    # TODO: require community/testing repo
+    # TODO: requires community/testing repo (currently does not work)
 
     "polkit": lambda: [
         chadd(mnt, "polkit"), chrcadd(mnt, "polkit"), chrcstart(mnt, "polkit"),
@@ -203,7 +203,7 @@ else:
 
 
 # remove unused (installer) packages
-if not get("features.system.networkmanager"):
+if "networkmanager" not in get("features.system"):
     # the service is not added to rc-update if networkmanager is not enabled in the config file
     #chrcdel("networkmanager boot")
     chrcstop(mnt, "networkmanager")
@@ -216,8 +216,8 @@ for temp_package in (
         "cryptsetup", "lvm2", "lsblk", "btrfs-progs", "e2fsprogs",
         # alpine-install
         "parted", "wipefs", "arch-install-scripts"):
-    if temp_package not in get("features.packages"):
-        chdel(mnt, pkg)
+    if temp_package not in get("packages"):
+        chdel(mnt, temp_package)
 
 # yq
 

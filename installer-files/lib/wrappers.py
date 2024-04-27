@@ -17,7 +17,7 @@ def do(cmd, expected_code=0):
     output, code = system(cmd)
     if code == expected_code:
         if verbose:
-            print(f"running: {cmd}")
+            print(f"ran: {cmd}")
         return output
     else:
         print("error running:")

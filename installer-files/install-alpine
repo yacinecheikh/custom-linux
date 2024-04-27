@@ -36,7 +36,7 @@ else:
 # hostname
 hostname = get("settings.user.hostname")
 chdo(mnt, f"setup-hostname {hostname}")
-chdo(mnt, f"rc-service hostname restart")
+#chdo(mnt, f"rc-service hostname restart")
 # timezone
 timezone = get("settings.user.timezone")
 chdo(mnt, f"setup-timezone {timezone}")

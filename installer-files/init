@@ -11,10 +11,12 @@ cp -r $files/install /root/
 # python multi-step install files
 cp -r $files/checks.py /root/
 cp -r $files/lib /root/
+cp -r $files/installer_settings.py /root/
+
 cp -r $files/prepare-installer /root/
 cp -r $files/partition /root/
+cp -r $files/install-alpine/root/
 cp -r $files/customize /root/
-cp -r $files/installer_settings.py /root/
 
 cp -r $files/choices.yml /root/
 cp -r $files/config /root/
