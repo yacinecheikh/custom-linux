@@ -22,7 +22,7 @@ install:
   # simple | full
   # full mode includes a luks encrypted lvm root partition
   # simple mode skips that (more suited to virtual machines and tinkerers who don't want to deal with the added complexity)
-  mode: full
+  mode: simple
 
 system:
   # ash | zsh
