@@ -73,7 +73,11 @@ nslookup google.com > nslookup.log
 # wait until networkmanager is started
 # TODO: test
 #while [ -z "$(nmcli device)" ]
-while [ -z "$(nslookup google.com)" ]
+result=$(nslookup google.com)
+# WARNING: this is a "starts with" test (nslookup starts with "Server:"
+# Here be dragons, don't touch this
+while ! [[ "$result" == Server* ]]
+#while [ -z "$(nslookup google.com)" ]
 do
 	sleep 0.1
 done

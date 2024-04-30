@@ -176,7 +176,8 @@ if preset == "river":
     else:
         unknown("graphics.river.login")
 elif preset == "xfce":
-    chroot(mnt, "setup-xorg-base")
+    # TODO: expected = 1 (after testing)
+    chdo(mnt, "setup-xorg-base")
     chadd(mnt, "xfce4 xfce4-terminal xfce4-screensaver lightdm-gtk-greeter")
     #rc-service lightdm start
     chrcadd(mnt, "lightdm")
@@ -184,18 +185,20 @@ elif preset == "xfce":
 #    	layout=$(config graphics.options.xfce.xkeyboard.layout)
 #    	variant=$(config graphics.options.xfce.xkeyboard.variant)
 #    	if ! [ "$layout" = "none" ]
-    chadd(mnt, "setxkbmap")
-    old = "#display-setup-script="
+    #chadd(mnt, "setxkbmap")
+    #old = "#display-setup-script="
 
-    layout = get('settings.user.keyboard.layout')
-    variant = get('settings.user.keyboard.variant')
-    if variant == layout:
-        do(f"setup-keymap {layout} {variant}")
-    else:
-        do(f"setup-keymap {layout} {layout}-{variant}")
+    layout = get('system.keyboard.layout')
+    variant = get('system.keyboard.variant')
+    #if variant == layout:
+    #    do(f"setup-keymap {layout} {variant}")
+    #else:
+    #    do(f"setup-keymap {layout} {layout}-{variant}")
 
-    new = f"display-setup-script=setxkbmab {layout} {variant}"
-    do(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
+    #new = f"display-setup-script=setxkbmab {layout} {variant}"
+    #do(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
+    chdo("mkdir -p /etc/X11/xorg.conf.d/")
+    conf.xkeyboard(f"{mnt}/etc/X11/xorg.conf.d/00-keyboard.conf", layout, variant)
     # udev is already setup by the init script
     #setup-devd udev
 else:
