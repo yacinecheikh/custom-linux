@@ -15,7 +15,7 @@ cp -r $files/installer_settings.py /root/
 
 cp -r $files/prepare-installer /root/
 cp -r $files/partition /root/
-cp -r $files/install-alpine/root/
+cp -r $files/install-alpine /root/
 cp -r $files/customize /root/
 
 cp -r $files/choices.yml /root/
@@ -53,6 +53,7 @@ rc-service networkmanager start
 # TODO: read the debug info and compare when this breaks
 ip a > ip.log
 nmcli device > nmcli.log
+nslookup google.com > nslookup.log
 
 # now that internet access is enabled, there is no need to keep all the packages locally (or rather, this is not possible due to unfixeable problems with apk)
 # TODO: wait until boostrap phase to install packages directly into the system (instead of live-installing everything from internet)
@@ -69,15 +70,14 @@ nmcli device > nmcli.log
 #done
 
 
-# TODO: test
 # wait until networkmanager is started
-while [ -z "$(nmcli device)" ]
+# TODO: test
+#while [ -z "$(nmcli device)" ]
+while [ -z "$(nslookup google.com)" ]
 do
 	sleep 0.1
 done
-
-# TODO: wait until dns resolution works (nslookup ?)
-
+nslookup google.com > nslookup1.log
 
 # wait until connection is up before fetching mirrors
 # even though DNS fails and google cannot be reached, this is enough delay
@@ -98,6 +98,7 @@ apk add python3  #py3-pip
 apk add py3-yaml
 ip a > ip2.log
 nmcli device > nmcli2.log
+nslookup google.com > nslookup2.log
 
 # prepare the environment for the user
 apk add nano vim

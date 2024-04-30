@@ -27,32 +27,32 @@ else:
 #===============
 
 # keyboard
-layout = get('settings.user.keyboard.layout')
-variant = get('settings.user.keyboard.variant')
+layout = get('system.keyboard.layout')
+variant = get('system.keyboard.variant')
 if variant == layout:
     chdo(mnt, f"setup-keymap {layout} {variant}")
 else:
     chdo(mnt, f"setup-keymap {layout} {layout}-{variant}")
 # hostname
-hostname = get("settings.user.hostname")
+hostname = get("system.hostname")
 chdo(mnt, f"setup-hostname {hostname}")
 #chdo(mnt, f"rc-service hostname restart")
 # timezone
-timezone = get("settings.user.timezone")
+timezone = get("system.timezone")
 chdo(mnt, f"setup-timezone {timezone}")
 # apk repos
-mirror = get("settings.system.repository.apk.mirror")
+mirror = get("system.repository.apk.mirror")
 switch = {
     "default": "-1",
     "fastest": "-f",
     "random": "-r",
 }
 args = switch[mirror]
-if get("settings.system.repository.apk.community"):
+if get("system.repository.apk.community"):
     args += " -c"
 chdo(mnt, f"setup-apkrepos {args}")
 # this repository is added differently because the setup-apkrepos script does not have an option for test repos
-if get("settings.system.repository.apk.edge-testing"):
+if get("system.repository.apk.edge-testing"):
     url = chdo(mnt, "cat /etc/apk/repositories | tail -n 1 | cut -d / -f 1-4")
     edge_testing = f"{url}/edge/testing"
     chdo(mnt, f"echo {edge_testing} >> /etc/apk/repositories")
@@ -60,9 +60,9 @@ if get("settings.system.repository.apk.edge-testing"):
 # TODO: move this after chdo
 
 # main user
-username = get("settings.user.username")
-password = get("settings.user.password")
-fullname = get("settings.user.fullname")
+username = get("system.user.username")
+password = get("system.user.password")
+fullname = get("system.user.fullname")
 # -a: admin (using this installs doas automatically)
 # -g: groups
 chdo(mnt, f"""setup-user -a -g 'audio video netdev' -f "{fullname}" "{username}" """)
@@ -72,7 +72,10 @@ if "networkmanager" in get("features.system"):
 
 # set the password for the user
 # TODO: replace "echo |" with stdin=
-chroot(mnt, "chpasswd", stdin=f"{username}:{password}")
+# TODO: find why this doesn't work
+do(f"echo {username}:{password} | arch-chroot {mnt} chpasswd")
+#chroot(mnt, f"chpasswd", stdin=f"{username}:{password}")
+#chroot(mnt, "chpasswd", stdin=f"{username}:{password}")
 #chdo(mnt, f'echo "{username}:{password}" | chpasswd')
 persist(f"/home/{username}")
 

@@ -34,7 +34,7 @@ def do(cmd, expected_code=0):
 #================
 
 def chroot(mnt, cmd, stdin=None, stderr=False):
-    return system(f"arch-chroot {mnt} {cmd}", stdin, stderr=stderr)
+    return system(f"arch-chroot {mnt} {cmd}", stdin=stdin, stderr=stderr)
 
 def chdo(mnt, cmd, expected=0):
     return do(f"arch-chroot {mnt} {cmd}", expected_code=expected)
