@@ -5,7 +5,7 @@ from installer_settings import verbose, auto, mountpoint as mnt
 from lib.core import system, get
 from lib.wrappers import do, passwd, chrcadd, chrcdel, chrcstart, chrcstop, chdo, chroot, chadd, chdel
 from lib.utils import error, todo, confirm, unknown
-import conf
+from lib import conf
 
 import sys
 
@@ -26,7 +26,7 @@ install_switch = {
         chadd(mnt, "polkit"), chrcadd(mnt, "polkit"), chrcstart(mnt, "polkit"),
         # TODO: test
         #mkdir -p /etc/polkit/rules.d
-        do(f"mv {installconf}/etc/polkit-1/rules.d/* {mnt}/etc/polkit-1/rules.d/"),
+        conf.polkit(mnt),
         ],
     # network is already taken care of by the init script
     # but has to be enabled after reboot
@@ -96,10 +96,11 @@ if preset == "river":
     # river config
     userconfig = f"/mnt/home/{username}/.config"
     #riverconf = f"{userconfig}/river"
-    do(f"mkdir -p {riverconf}")
+    #do(f"mkdir -p {riverconf}")
 
-    do(f"cp {installconf}/configs/river/river-init {userconfig}/river/init")
-    do(f"chmod +x {userconfig}/river/init")
+    conf.river(mnt, username)
+    #do(f"cp {installconf}/configs/river/river-init {userconfig}/river/init")
+    #do(f"chmod +x {userconfig}/river/init")
 
     launcher = get("graphics.river.launcher")
     if launcher == "bemenu":
@@ -113,15 +114,17 @@ if preset == "river":
 
     bar = get("graphics.river.bar")
     if bar == "wayland":
-        do(f"mkdir {userconfig}/waybar")
-        do(f"cp {installconf}/configs/river/waybar-config.json {userconfig}/waybar/config")
+        conf.waybar(mnt, username)
+        #do(f"mkdir {userconfig}/waybar")
+        #do(f"cp {installconf}/configs/river/waybar-config.json {userconfig}/waybar/config")
         chadd(mnt, "waybar")
     elif bar == "none":
         pass
     else:
         unknown("graphics.river.bar")
 
-    do(f"cp {installconf}/configs/river/xdg-profile.sh /mnt/etc/profile.d/xdg-runtime-dir.sh")
+    conf.xdg_profile(mnt)
+    #do(f"cp {installconf}/configs/river/xdg-profile.sh /mnt/etc/profile.d/xdg-runtime-dir.sh")
 
     # TODO: chmod +x ?
 
@@ -160,8 +163,10 @@ if preset == "river":
     if login == "greetd-wlgreet":
         print("setting up greetd session manager")
         chadd(mnt, "greetd-wlgreet")
-        do(f"cp {installconf}/configs/river/greetd-config.toml /mnt/etc/greetd/config.toml")
-        do(f"cp {installconf}/configs/river/river-wlgreet-config /mnt/etc/greetd/river-wlgreet-config")
+        conf.greetd(mnt)
+        #do(f"cp {installconf}/configs/river/greetd-config.toml /mnt/etc/greetd/config.toml")
+        conf.river_wlgreet(mnt)
+        #do(f"cp {installconf}/configs/river/river-wlgreet-config /mnt/etc/greetd/river-wlgreet-config")
 
         do("chmod +x /mnt/etc/greetd/river-wlgreet-config")
         #chmod u+x /etc/greetd/river-wlgreet-config
@@ -199,7 +204,7 @@ elif preset == "xfce":
     #new = f"display-setup-script=setxkbmab {layout} {variant}"
     #do(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
     chdo(mnt, "mkdir -p /etc/X11/xorg.conf.d/")
-    conf.xkeyboard(f"{mnt}/etc/X11/xorg.conf.d/00-keyboard.conf", layout, variant)
+    conf.xkeyboard(mnt, layout, variant)
     # udev is already setup by the init script
     #setup-devd udev
 else:

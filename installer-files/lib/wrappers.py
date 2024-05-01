@@ -48,6 +48,16 @@ def passwd(prompt):
         if x == input(f"confirm: "):
             return x
 
+def cp(src, dest):
+    do(f"cp {src} {dest}")
+
+def chmod(attr, path):
+    do(f"chmod {attr} {path}")
+
+def mkdir(path):
+    do(f"mkdir -p {path}")
+
+# TODO: remove (no use in a chroot setup)
 def persist(path):
     # saves filesystem changes to persist after install and reboot
     do(f"lbu add {path}")
