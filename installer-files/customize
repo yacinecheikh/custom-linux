@@ -5,10 +5,11 @@ from installer_settings import verbose, auto, mountpoint as mnt
 from lib.core import system, get
 from lib.wrappers import do, passwd, chrcadd, chrcdel, chrcstart, chrcstop, chdo, chroot, chadd, chdel
 from lib.utils import error, todo, confirm, unknown
+import conf
 
 import sys
 
-username = get("settings.user.username")
+username = get("system.user.username")
 installconf = "/root/config"
 
 #==============
@@ -197,7 +198,7 @@ elif preset == "xfce":
 
     #new = f"display-setup-script=setxkbmab {layout} {variant}"
     #do(f"sed -i 's/{old}/{new}/g' /mnt/etc/lightdm/lightdm.conf")
-    chdo("mkdir -p /etc/X11/xorg.conf.d/")
+    chdo(mnt, "mkdir -p /etc/X11/xorg.conf.d/")
     conf.xkeyboard(f"{mnt}/etc/X11/xorg.conf.d/00-keyboard.conf", layout, variant)
     # udev is already setup by the init script
     #setup-devd udev

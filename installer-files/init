@@ -12,6 +12,7 @@ cp -r $files/install /root/
 cp -r $files/checks.py /root/
 cp -r $files/lib /root/
 cp -r $files/installer_settings.py /root/
+cp -r $files/conf.py /root/
 
 cp -r $files/prepare-installer /root/
 cp -r $files/partition /root/
@@ -76,6 +77,7 @@ nslookup google.com > nslookup.log
 result=$(nslookup google.com)
 # WARNING: this is a "starts with" test (nslookup starts with "Server:"
 # Here be dragons, don't touch this
+# TODO: fix, this does not work (probably because nslookup is stuck waiting, the script works after a restart)
 while ! [[ "$result" == Server* ]]
 #while [ -z "$(nslookup google.com)" ]
 do
