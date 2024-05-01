@@ -51,43 +51,15 @@ apk add --force-non-repository $apks/networkmanager-openrc-*
 apk add --force-non-repository $apks/dbus-openrc-*
 
 rc-service networkmanager start
-# TODO: read the debug info and compare when this breaks
-ip a > ip.log
-nmcli device > nmcli.log
-nslookup google.com > nslookup.log
 
 # now that internet access is enabled, there is no need to keep all the packages locally (or rather, this is not possible due to unfixeable problems with apk)
 # TODO: wait until boostrap phase to install packages directly into the system (instead of live-installing everything from internet)
 
-# wait until an ip address is found
-# alternative: nmcli device gives empty string
-#interfaces=$(ip a | grep "^[0-9]" | cut -d ":" -f 2 | cut -c 2- | grep -v lo)
-#interface=$(echo "$interfaces" | head -n 1)
-#ip=$(ip addr show $interface | grep inet)
-#while [ -z "$ip" ]
-#do
-#	sleep 0.1
-#	ip=$(ip addr show $interface | grep inet)
-#done
-
-
 # wait until networkmanager is started
-# TODO: test
-#while [ -z "$(nmcli device)" ]
-result=$(nslookup google.com)
-# WARNING: this is a "starts with" test (nslookup starts with "Server:"
-# Here be dragons, don't touch this
-# TODO: fix, this does not work (probably because nslookup is stuck waiting, the script works after a restart)
-while ! [[ "$result" == Server* ]]
-#while [ -z "$(nslookup google.com)" ]
+while ! nslookup google.com
 do
 	sleep 0.1
 done
-nslookup google.com > nslookup1.log
-
-# wait until connection is up before fetching mirrors
-# even though DNS fails and google cannot be reached, this is enough delay
-ping -c 1 google.com
 
 #=================================================================
 # prepare the environment a useable live environment to configure the installation
@@ -102,9 +74,6 @@ apk upgrade
 apk add python3  #py3-pip
 #pip install pyaml
 apk add py3-yaml
-ip a > ip2.log
-nmcli device > nmcli2.log
-nslookup google.com > nslookup2.log
 
 # prepare the environment for the user
 apk add nano vim
