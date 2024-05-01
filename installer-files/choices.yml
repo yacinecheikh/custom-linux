@@ -102,7 +102,7 @@ graphics:
   # preset: river | xfce | none
   preset: xfce
   river:
-    # launcher: wofi | bemenu
+    # launcher: wofi | bemenu | none
     launcher: bemenu
     # bar: waybar | none
     bar: waybar
