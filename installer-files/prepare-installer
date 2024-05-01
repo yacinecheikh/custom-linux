@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 from lib.wrappers import do
-from checks import check_dependencies
-
-# TODO: run this between init and partition
+from checks import check_dependencies, check_compat()
 
 check_dependencies()
+check_compat()
 
 # partition
 do("apk add cryptsetup lvm2 lsblk btrfs-progs e2fsprogs")
